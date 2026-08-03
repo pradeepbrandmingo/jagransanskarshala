@@ -142,7 +142,7 @@ export default function AdminSidebar({ sidebarOpen, setSidebarOpen, activeMenu, 
                     <div className="font-extrabold text-xs sm:text-sm tracking-tight">
                       {item.label}
                     </div>
-                    <div className="text-[10px] opacity-80 font-medium">
+                    <div className="text-[10px] opacity-75 font-medium">
                       {item.subLabel}
                     </div>
                   </div>
