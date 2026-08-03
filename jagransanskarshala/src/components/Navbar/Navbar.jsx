@@ -132,6 +132,8 @@ export default function Navbar() {
                                       <Link
                                         key={subItem.id}
                                         href={subItem.link || "/"}
+                                        target={subItem.link?.startsWith("http") ? "_blank" : undefined}
+                                        rel={subItem.link?.startsWith("http") ? "noopener noreferrer" : undefined}
                                         className="block px-2.5 py-2 text-[13px] text-gray-600 font-medium hover:text-[var(--primary)] hover:bg-red-50/60 rounded-lg transition-colors leading-snug"
                                       >
                                         {subItem.label}
@@ -143,6 +145,8 @@ export default function Navbar() {
                             ) : (
                               <Link
                                 href={dropItem.link || "/"}
+                                target={dropItem.link?.startsWith("http") ? "_blank" : undefined}
+                                rel={dropItem.link?.startsWith("http") ? "noopener noreferrer" : undefined}
                                 className="block px-3 py-2.5 text-[14px] text-gray-700 font-medium hover:text-[var(--primary)] hover:bg-gray-50 rounded-lg transition-colors whitespace-normal leading-tight"
                               >
                                 {dropItem.label}
@@ -320,6 +324,8 @@ export default function Navbar() {
                                   <li key={subItem.id}>
                                     <Link
                                       href={subItem.link || "/"}
+                                      target={subItem.link?.startsWith("http") ? "_blank" : undefined}
+                                      rel={subItem.link?.startsWith("http") ? "noopener noreferrer" : undefined}
                                       onClick={handleLinkClick}
                                       className="block text-[13px] text-gray-500 hover:text-[var(--primary)] py-1 transition-colors font-medium"
                                     >
@@ -332,6 +338,8 @@ export default function Navbar() {
                           ) : (
                             <Link
                               href={dropItem.link || "/"}
+                              target={dropItem.link?.startsWith("http") ? "_blank" : undefined}
+                              rel={dropItem.link?.startsWith("http") ? "noopener noreferrer" : undefined}
                               onClick={handleLinkClick}
                               className="block text-[15px] text-gray-600 hover:text-[var(--primary)] py-1 transition-colors"
                             >
