@@ -254,7 +254,8 @@ export default function AdminDashboardPage() {
     const token = localStorage.getItem("adminToken");
     if (!token) return;
     try {
-      const res = await fetch("http://localhost:8000/api/v1/survey/all", {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      const res = await fetch(`${backendUrl}/api/v1/survey/all`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -264,7 +265,7 @@ export default function AdminDashboardPage() {
         setLiveSurveys(data.data);
       }
     } catch (err) {
-      console.error("Error fetching live surveys:", err);
+      console.warn("Backend connection pending/failed:", err.message);
     }
   };
 

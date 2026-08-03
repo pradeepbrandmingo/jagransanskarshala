@@ -17,6 +17,7 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  "https://jagransanskarshala.vercel.app",
 ].filter(Boolean);
 
 app.use(

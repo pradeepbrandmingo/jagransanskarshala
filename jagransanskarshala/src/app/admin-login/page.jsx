@@ -64,7 +64,7 @@ export default function AdminLoginPage() {
         setError(data.message || "Invalid email or password.");
       }
     } catch (err) {
-      console.error("Login fetch error:", err);
+      console.warn("Login fetch error:", err.message);
       setError(
         "Unable to connect to backend server. Please check if backend server is running on http://localhost:8000",
       );
