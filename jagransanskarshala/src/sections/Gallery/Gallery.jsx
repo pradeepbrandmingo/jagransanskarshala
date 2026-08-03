@@ -1,37 +1,43 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import {
   FaImages,
-  FaArrowLeft,
+  FaChevronLeft,
+  FaChevronRight,
   FaChevronDown,
   FaExpand,
   FaXmark,
   FaCalendarDays,
-  FaWandMagicSparkles,
+  FaFolderClosed,
 } from "react-icons/fa6";
 import { useLanguage } from "@/context/LanguageContext";
 import GalleryRightBg from "@/assets/images/gallery.png";
-import { galleryTabs, initialGalleryData } from "@/services/galleryService";
+import {
+  galleryTabs,
+  initialGalleryCategories,
+} from "@/services/galleryService";
 
 export default function GallerySection({ initialYear = "All" }) {
-  const { lang, t } = useLanguage();
+  const { lang } = useLanguage();
   const [activeTab, setActiveTab] = useState(initialYear);
-  const [images, setImages] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedImage, setSelectedImage] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Sync initialYear if prop changes (e.g. from query param)
+  // Lightbox Modal Slider State
+  const [lightboxCategory, setLightboxCategory] = useState(null);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  // Sync initialYear if prop changes
   useEffect(() => {
     if (initialYear) {
       setActiveTab(initialYear);
     }
   }, [initialYear]);
 
-  // Fetch images from backend API (with fallback to client dataset)
+  // Fetch category-grouped gallery data
   useEffect(() => {
     let isMounted = true;
     async function fetchGallery() {
@@ -41,7 +47,7 @@ export default function GallerySection({ initialYear = "All" }) {
         if (res.ok) {
           const json = await res.json();
           if (isMounted && json.data) {
-            setImages(json.data);
+            setCategories(json.data);
             setLoading(false);
             return;
           }
@@ -53,14 +59,13 @@ export default function GallerySection({ initialYear = "All" }) {
         );
       }
 
-      // Fallback data if API not responding
+      // Local fallback data
       if (isMounted) {
-        let filtered = [...initialGalleryData];
+        let filtered = [...initialGalleryCategories];
         if (activeTab !== "All" && activeTab !== "all") {
-          filtered = filtered.filter((img) => img.year === activeTab);
+          filtered = filtered.filter((cat) => cat.year === activeTab);
         }
-        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        setImages(filtered);
+        setCategories(filtered);
         setLoading(false);
       }
     }
@@ -76,15 +81,51 @@ export default function GallerySection({ initialYear = "All" }) {
     return galleryTabs.find((t) => t.year === activeTab) || galleryTabs[0];
   }, [activeTab]);
 
+  // Open Lightbox Slider for specific Category and Image Index
+  const openLightbox = (category, index) => {
+    setLightboxCategory(category);
+    setLightboxIndex(index);
+  };
+
+  const closeLightbox = () => {
+    setLightboxCategory(null);
+    setLightboxIndex(0);
+  };
+
+  const handlePrevImage = useCallback(() => {
+    if (!lightboxCategory) return;
+    setLightboxIndex((prev) =>
+      prev === 0 ? lightboxCategory.images.length - 1 : prev - 1,
+    );
+  }, [lightboxCategory]);
+
+  const handleNextImage = useCallback(() => {
+    if (!lightboxCategory) return;
+    setLightboxIndex((prev) =>
+      prev === lightboxCategory.images.length - 1 ? 0 : prev + 1,
+    );
+  }, [lightboxCategory]);
+
+  // Keyboard navigation for Lightbox slider
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!lightboxCategory) return;
+      if (e.key === "ArrowLeft") handlePrevImage();
+      if (e.key === "ArrowRight") handleNextImage();
+      if (e.key === "Escape") closeLightbox();
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [lightboxCategory, handlePrevImage, handleNextImage]);
+
   return (
     <section className="relative w-full py-8 md:py-14 overflow-hidden min-h-[80vh]">
-      {/* Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* ==========================================================
-            HERO SECTION (Clean, seamless background)
+            HERO HEADER
            ========================================================== */}
         <div className="relative w-full py-4 sm:py-6 md:py-8 mb-8 md:mb-12">
-          {/* Right Side Decoration Image - Hidden on mobile to prevent text overlap, enlarged on desktop */}
           <div className="hidden md:flex absolute right-4 lg:right-12 xl:right-16 top-0 bottom-0 pointer-events-none items-center justify-end z-0">
             <Image
               src={GalleryRightBg}
@@ -94,9 +135,7 @@ export default function GallerySection({ initialYear = "All" }) {
             />
           </div>
 
-          {/* Hero Content */}
           <div className="relative z-10 max-w-2xl">
-            {/* Title - Matched with Theme Primary Red */}
             <div className="flex items-center gap-3 sm:gap-4 mb-3 sm:mb-4">
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/80 backdrop-blur-xs shadow-xs flex items-center justify-center shrink-0 border border-red-100">
                 <FaImages
@@ -112,10 +151,8 @@ export default function GallerySection({ initialYear = "All" }) {
               </h1>
             </div>
 
-            {/* Red Underline Accent */}
             <div className="w-16 sm:w-20 h-1.5 bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)] rounded-full mb-4 sm:mb-6" />
 
-            {/* Description */}
             <p className="text-base sm:text-lg text-gray-700 font-medium leading-relaxed max-w-xl">
               {lang === "hi"
                 ? "उन पलों को फिर से जिएं जो प्रेरित और सशक्त बनाते हैं। हमारे सत्रों, कार्यक्रमों और गतिविधियों की झलकियां देखें।"
@@ -128,7 +165,6 @@ export default function GallerySection({ initialYear = "All" }) {
             YEARLY FILTERING TABS (DESKTOP BAR + MOBILE DROPDOWN)
            ========================================================== */}
         <div className="mb-8 md:mb-12">
-          {/* Desktop Filter Bar (Soft cream/beige background matching reference image #2 & #3) */}
           <div className="hidden lg:flex items-stretch justify-between bg-[#fbf3ea]/90 backdrop-blur-xs p-2 rounded-2xl border border-[#ebd8c5] shadow-xs w-full">
             {galleryTabs.map((tab, idx) => {
               const isActive = activeTab === tab.year;
@@ -160,7 +196,6 @@ export default function GallerySection({ initialYear = "All" }) {
                               ? "bg-white text-[var(--primary)] shadow-2xs"
                               : "bg-[#fff7ee] text-[#c71518] border border-red-200"
                           }`}
-                          style={{ verticalAlign: "middle" }}
                         >
                           <span className="translate-y-[0.5px]">LATEST</span>
                         </span>
@@ -177,7 +212,6 @@ export default function GallerySection({ initialYear = "All" }) {
                     )}
                   </button>
 
-                  {/* Vertical Divider between non-active tabs like SS #2 */}
                   {!isLast &&
                     !isActive &&
                     activeTab !== galleryTabs[idx + 1]?.year && (
@@ -265,63 +299,57 @@ export default function GallerySection({ initialYear = "All" }) {
         </div>
 
         {/* ==========================================================
-            IMAGES GRID SECTION
+            CATEGORY GROUPED GALLERY GRID
            ========================================================== */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-              <div
-                key={n}
-                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 animate-pulse"
-              >
-                <div className="w-full h-52 bg-gray-200" />
-                <div className="p-4 flex items-center justify-between">
-                  <div className="h-4 w-24 bg-gray-200 rounded" />
+          <div className="space-y-10">
+            {[1, 2].map((catIdx) => (
+              <div key={catIdx} className="space-y-4">
+                <div className="h-7 w-48 bg-gray-200 rounded-lg animate-pulse" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4].map((n) => (
+                    <div
+                      key={n}
+                      className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 animate-pulse"
+                    >
+                      <div className="w-full h-52 bg-gray-200" />
+                      <div className="p-4">
+                        <div className="h-4 w-32 bg-gray-200 rounded" />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
           </div>
-        ) : images.length === 0 ? (
+        ) : categories.length === 0 ? (
           <div className="relative w-full max-w-2xl mx-auto my-10 p-8 sm:p-12 bg-white/90 backdrop-blur-md rounded-3xl shadow-xl border border-[#ebd8c5] text-center overflow-hidden">
-            {/* Soft decorative background glow */}
-            <div className="absolute -top-12 -right-12 w-40 h-40 bg-red-100/40 rounded-full blur-2xl pointer-events-none" />
-            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-orange-100/40 rounded-full blur-2xl pointer-events-none" />
-
             <div className="relative z-10 flex flex-col items-center justify-center">
-              {/* Animated Icon Circle */}
               <div className="relative mb-6">
                 <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-50 to-orange-50 border border-red-100 text-[var(--primary)] flex items-center justify-center shadow-md">
                   <FaImages className="text-4xl" />
                 </div>
-                <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--secondary)] opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-[var(--secondary)]"></span>
-                </span>
               </div>
 
-              {/* Status Badge */}
               <span className="inline-block px-3.5 py-1 rounded-full bg-red-50 text-[var(--primary)] text-xs font-extrabold uppercase tracking-wider mb-3 border border-red-100">
                 {lang === "hi" ? "जल्द आ रहा है" : "Coming Soon"}
               </span>
 
-              {/* Heading */}
               <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-3 tracking-tight">
                 {lang === "hi"
                   ? `${activeTabObj.title.hi} के चित्र जल्द ही उपलब्ध होंगे`
                   : `Glimpses of ${activeTabObj.title.en} Coming Soon`}
               </h3>
 
-              {/* Message */}
               <p className="text-gray-600 text-sm sm:text-base max-w-md leading-relaxed mb-6 font-medium">
                 {lang === "hi"
                   ? "इस आर्काइव वर्ष की तस्वीरें अपलोड की जा रही हैं। नया मीडिया पोस्ट होते ही यहाँ लाइव दिखाई देगा।"
                   : "We are currently curating and uploading photos for this archive year. New media will appear live here as soon as it is posted."}
               </p>
 
-              {/* Quick switch button to 2025 */}
               <button
                 onClick={() => setActiveTab("2025")}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--primary)] text-white text-sm font-bold shadow-md hover:bg-red-700 hover:shadow-lg transition-all cursor-pointer hover:scale-105"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[var(--primary)] text-white text-sm font-bold shadow-md hover:bg-red-700 transition-all cursor-pointer"
               >
                 <span>
                   {lang === "hi"
@@ -332,85 +360,148 @@ export default function GallerySection({ initialYear = "All" }) {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
-            {images.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => setSelectedImage(item)}
-                className="group relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 hover:-translate-y-1.5 border border-gray-100 flex flex-col cursor-pointer"
-              >
-                {/* Image Container */}
-                <div className="relative w-full h-52 sm:h-56 overflow-hidden bg-gray-100">
-                  <img
-                    src={item.url}
-                    alt={item.title || `Sanskarshala ${item.year}`}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    loading="lazy"
-                  />
+          <div className="space-y-12 sm:space-y-14">
+            {categories.map((cat) => {
+              const title =
+                lang === "hi"
+                  ? cat.categoryTitleHi || cat.categoryTitle
+                  : cat.categoryTitle;
 
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full bg-white/90 text-[var(--primary)] flex items-center justify-center transform scale-75 group-hover:scale-100 transition-transform duration-300 shadow-lg">
-                      <FaExpand className="text-base" />
+              return (
+                <div key={cat._id || cat.id} className="space-y-4">
+                  {/* Category Heading (Assembly Take Over, News Paper Reading, Principal Meet) */}
+                  {/* Category Heading (Assembly Take Over, News Paper Reading, Principal Meet) */}
+                  <div className="flex items-center justify-between pb-3 border-b-2 border-red-100/80">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">
+                        {title}
+                      </h2>
                     </div>
+                    <span className="text-xs font-bold px-3 py-1 rounded-full bg-gray-100/80 text-gray-600">
+                      {cat.images?.length || 0}{" "}
+                      {lang === "hi" ? "तस्वीरें" : "Photos"}
+                    </span>
+                  </div>
+
+                  {/* Category Grid — Auto-Adaptive Dynamic Grid for any number of backend images (1, 5, 6, 12+) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                    {cat.images?.map((item, index) => (
+                      <div
+                        key={item._id || item.id || index}
+                        onClick={() => openLightbox(cat, index)}
+                        className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border border-gray-100/90 cursor-pointer"
+                      >
+                        {/* Proportional Aspect Ratio Image Container */}
+                        <div className="relative w-full aspect-[4/3] overflow-hidden bg-gray-100">
+                          <img
+                            src={item.url}
+                            alt={title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            loading="lazy"
+                          />
+
+                          {/* Hover Expand Overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-full bg-white/90 text-[var(--primary)] flex items-center justify-center transform scale-75 group-hover:scale-100 transition-transform duration-300 shadow-lg">
+                              <FaExpand className="text-base" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-
-                {/* Bottom Bar — Title & Year Badge */}
-                <div className="p-4 bg-white flex items-center justify-between border-t border-gray-50 mt-auto">
-                  <span className="font-bold text-gray-800 text-sm sm:text-base group-hover:text-[var(--primary)] transition-colors line-clamp-1">
-                    {item.year === "All" || !item.year
-                      ? item.title || "Gallery Photo"
-                      : `Year ${item.year}`}
-                  </span>
-
-                  <span className="shrink-0 text-xs font-extrabold px-2.5 py-1 rounded-md bg-red-50 text-[var(--primary)]">
-                    {item.year}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
 
       {/* ==========================================================
-          LIGHTBOX MODAL FOR ENLARGED IMAGE VIEW
+          CATEGORY LIGHTBOX SLIDER MODAL (Fully Responsive for All Screen Sizes)
          ========================================================== */}
-      {selectedImage && (
+      {lightboxCategory && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
-          onClick={() => setSelectedImage(null)}
+          className="fixed inset-0 z-50 bg-black/92 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 md:p-6 animate-fadeIn"
+          onClick={closeLightbox}
         >
           <div
-            className="relative max-w-4xl w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col"
+            className="relative max-w-5xl w-full bg-slate-950 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col max-h-[95vh] sm:max-h-[92vh]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between p-4 px-6 bg-slate-950/80 border-b border-white/10">
-              <div className="flex items-center gap-3">
-                <span className="text-white font-bold text-lg">
-                  {selectedImage.title || `Sanskarshala ${selectedImage.year}`}
+            <div className="flex items-center justify-between p-3 sm:p-4 px-4 sm:px-6 bg-slate-900/90 border-b border-white/10 z-20">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <FaFolderClosed className="text-[var(--primary)] text-base sm:text-lg shrink-0" />
+                <span className="text-white font-extrabold text-sm sm:text-base lg:text-lg truncate">
+                  {lang === "hi"
+                    ? lightboxCategory.categoryTitleHi ||
+                      lightboxCategory.categoryTitle
+                    : lightboxCategory.categoryTitle}
                 </span>
-                <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-[var(--primary)] text-white">
-                  {selectedImage.year}
+                <span className="text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-0.5 rounded-full bg-white/15 text-white/90 shrink-0">
+                  {lightboxIndex + 1} / {lightboxCategory.images.length}
                 </span>
               </div>
+
               <button
-                onClick={() => setSelectedImage(null)}
-                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                onClick={closeLightbox}
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 ml-2"
+                aria-label="Close slider modal"
               >
-                <FaXmark className="text-lg" />
+                <FaXmark className="text-base sm:text-lg" />
               </button>
             </div>
 
-            {/* Expanded Image */}
-            <div className="relative w-full max-h-[75vh] flex items-center justify-center bg-black p-2">
-              <img
-                src={selectedImage.url}
-                alt={selectedImage.title || "Expanded Gallery Image"}
-                className="max-h-[70vh] w-auto max-w-full object-contain rounded-lg"
-              />
+            {/* Slider Main Stage */}
+            <div className="relative flex-1 flex items-center justify-center bg-black p-2 sm:p-4 min-h-[300px] sm:min-h-[450px] overflow-hidden select-none">
+              {/* Previous Image Arrow */}
+              <button
+                onClick={handlePrevImage}
+                className="absolute left-2 sm:left-4 md:left-6 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/20 hover:bg-[var(--primary)] text-white backdrop-blur-md flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg cursor-pointer border border-white/10"
+                aria-label="Previous image"
+              >
+                <FaChevronLeft className="text-sm sm:text-lg" />
+              </button>
+
+              {/* Active Image (Pure image without bottom text) */}
+              <div className="relative max-h-[65vh] max-w-full flex items-center justify-center p-1">
+                <img
+                  src={lightboxCategory.images[lightboxIndex]?.url}
+                  alt={lightboxCategory.categoryTitle}
+                  className="max-h-[62vh] sm:max-h-[65vh] w-auto max-w-full object-contain rounded-lg sm:rounded-xl shadow-2xl transition-all duration-300"
+                />
+              </div>
+
+              {/* Next Image Arrow */}
+              <button
+                onClick={handleNextImage}
+                className="absolute right-2 sm:right-4 md:right-6 z-20 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-white/20 hover:bg-[var(--primary)] text-white backdrop-blur-md flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg cursor-pointer border border-white/10"
+                aria-label="Next image"
+              >
+                <FaChevronRight className="text-sm sm:text-lg" />
+              </button>
+            </div>
+
+            {/* Bottom Category Thumbnail Strip (Auto-scrolls smoothly for any count of images) */}
+            <div className="p-2 sm:p-3 bg-slate-900/90 border-t border-white/10 flex items-center justify-start sm:justify-center gap-2 overflow-x-auto thin-scrollbar max-w-full">
+              {lightboxCategory.images.map((img, idx) => (
+                <button
+                  key={img._id || img.id || idx}
+                  onClick={() => setLightboxIndex(idx)}
+                  className={`relative w-12 h-9 sm:w-14 sm:h-10 rounded-lg overflow-hidden shrink-0 border-2 transition-all cursor-pointer ${
+                    lightboxIndex === idx
+                      ? "border-[var(--primary)] scale-105 opacity-100 ring-2 ring-red-500/40"
+                      : "border-transparent opacity-40 hover:opacity-90"
+                  }`}
+                >
+                  <img
+                    src={img.url}
+                    alt={`Thumbnail ${idx + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+              ))}
             </div>
           </div>
         </div>

@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import { FaBell } from "react-icons/fa6";
 import { useLanguage } from "@/context/LanguageContext";
+import { useSurveyModal } from "@/context/SurveyModalContext";
 import { getLatestUpdates } from "@/services/latestUpdates";
+import Link from "next/link";
 
 export default function LatestUpdates() {
   const { isHindi } = useLanguage();
+  const { openSurveyModal } = useSurveyModal();
   const [updates, setUpdates] = useState([]);
 
   useEffect(() => {
@@ -19,6 +22,13 @@ export default function LatestUpdates() {
 
   // Duplicate items array to create seamless infinite scrolling
   const marqueeItems = [...updates, ...updates];
+
+  const handleItemClick = (e, item) => {
+    if (item.actionType === "surveyModal") {
+      e.preventDefault();
+      openSurveyModal();
+    }
+  };
 
   return (
     <section className="w-full bg-[var(--background)] py-4 sm:py-6">
@@ -47,12 +57,25 @@ export default function LatestUpdates() {
             <div className="animate-marquee-scroll flex items-center gap-6 sm:gap-12">
               {marqueeItems.map((item, index) => (
                 <div key={`${item.id}-${index}`} className="flex items-center gap-6 sm:gap-12 whitespace-nowrap">
-                  <a
-                    href={item.link || "#"}
-                    className="text-[var(--heading)] hover:text-[var(--primary)] font-semibold text-xs sm:text-[15px] transition-colors duration-200 cursor-pointer"
-                  >
-                    {isHindi ? item.titleHi : item.titleEn}
-                  </a>
+                  {item.actionType === "surveyModal" ? (
+                    <button
+                      onClick={(e) => handleItemClick(e, item)}
+                      className="text-[var(--heading)] hover:text-[var(--primary)] font-semibold text-xs sm:text-[15px] transition-colors duration-200 cursor-pointer text-left"
+                    >
+                      {isHindi ? item.titleHi : item.titleEn}
+                    </button>
+                  ) : item.actionType === "none" ? (
+                    <span className="text-[var(--heading)] font-semibold text-xs sm:text-[15px] select-none cursor-default">
+                      {isHindi ? item.titleHi : item.titleEn}
+                    </span>
+                  ) : (
+                    <Link
+                      href={item.link || "/story/1"}
+                      className="text-[var(--heading)] hover:text-[var(--primary)] font-semibold text-xs sm:text-[15px] transition-colors duration-200 cursor-pointer"
+                    >
+                      {isHindi ? item.titleHi : item.titleEn}
+                    </Link>
+                  )}
                   <span className="text-[var(--secondary)] text-[10px] sm:text-xs select-none">
                     ◆
                   </span>

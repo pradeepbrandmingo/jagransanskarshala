@@ -87,6 +87,7 @@ app.get(`${API_VERSION}/health`, (req, res) => {
 
 import adminRoutes from "./routes/adminRoutes.js";
 import surveyRoutes from "./routes/surveyRoutes.js";
+import galleryRoutes from "./routes/galleryRoutes.js";
 
 /* ================================
    API Routes
@@ -94,6 +95,7 @@ import surveyRoutes from "./routes/surveyRoutes.js";
 
 app.use(`${API_VERSION}/admin`, adminRoutes);
 app.use(`${API_VERSION}/survey`, surveyRoutes);
+app.use(`${API_VERSION}/gallery`, galleryRoutes);
 
 /* ================================
    404 Route
@@ -103,6 +105,21 @@ app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: "Route Not Found",
+  });
+});
+
+/* ================================
+   Global Centralized Error Middleware
+================================ */
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+
+  return res.status(statusCode).json({
+    success: false,
+    statusCode,
+    message,
+    errors: err.errors || [],
   });
 });
 

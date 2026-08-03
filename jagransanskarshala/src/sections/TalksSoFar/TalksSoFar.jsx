@@ -81,18 +81,18 @@ export default function TalksSoFar() {
                         whileHover={{ y: -6, transition: { duration: 0.2 } }}
                         className="topic-card-active rounded-2xl px-6 py-5 cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-300 relative group overflow-hidden border border-white/20"
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-white/20 text-white uppercase tracking-wider">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-white/25 text-white uppercase tracking-wider">
                             {topic.week} • {isHindi ? "सक्रिय" : "Active"}
                           </span>
-                          <span className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-[var(--primary)] transition-all duration-300">
+                          <span className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white group-hover:text-[var(--primary)] transition-all duration-300">
                             <FaArrowRight className="text-xs transition-transform duration-300 group-hover:translate-x-0.5" />
                           </span>
                         </div>
-                        <h3 className="text-white font-bold text-xl sm:text-2xl mb-1.5">
+                        <h3 className="text-white font-black text-xl sm:text-2xl lg:text-3xl mb-2 leading-tight">
                           {topic.title}
                         </h3>
-                        <p className="text-white/90 text-sm sm:text-[15px] leading-relaxed">
+                        <p className="text-white/95 text-base sm:text-lg font-medium leading-relaxed">
                           {topic.desc}
                         </p>
                       </motion.div>
@@ -111,21 +111,21 @@ export default function TalksSoFar() {
                       delay: globalIndex * 0.08,
                       ease: "easeOut",
                     }}
-                    className="topic-card opacity-75 rounded-2xl px-6 py-5 cursor-not-allowed select-none relative overflow-hidden"
+                    className="topic-card opacity-80 rounded-2xl p-6 cursor-not-allowed select-none relative overflow-hidden"
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-white/10 text-white/70">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/15 text-white/80">
                         {topic.week}
                       </span>
-                      <span className="flex items-center gap-1 text-xs font-medium text-white/70 bg-black/20 px-2.5 py-0.5 rounded-full">
+                      <span className="flex items-center gap-1.5 text-xs font-bold text-white/80 bg-black/20 px-3 py-1 rounded-full">
                         <FaLock className="text-[10px]" />
                         <span>{isHindi ? "जल्द" : "Soon"}</span>
                       </span>
                     </div>
-                    <h3 className="text-white/90 font-semibold text-lg sm:text-xl mb-1.5">
+                    <h3 className="text-white/95 font-black text-xl sm:text-2xl mb-2 leading-tight">
                       {topic.title}
                     </h3>
-                    <p className="text-white/70 text-sm leading-relaxed">
+                    <p className="text-white/80 text-base sm:text-lg font-medium leading-relaxed">
                       {topic.desc}
                     </p>
                   </motion.div>

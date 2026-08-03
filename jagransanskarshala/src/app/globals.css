@@ -160,7 +160,7 @@ html {
 }
 
 .paragraph {
-  @apply text-[15px] md:text-base leading-8;
+  @apply text-[15px] md:text-base leading-8 text-justify;
   color: var(--paragraph);
 }
 

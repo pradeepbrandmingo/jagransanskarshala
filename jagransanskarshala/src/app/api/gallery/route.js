@@ -1,29 +1,47 @@
 import { NextResponse } from "next/server";
-import { initialGalleryData, galleryTabs } from "@/services/galleryService";
-
-// Simple in-memory cache for API demo, sorted by createdAt desc (latest top)
-let galleryMemoryDB = [...initialGalleryData].sort(
-  (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-);
+import { initialGalleryCategories, galleryTabs } from "@/services/galleryService";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const year = searchParams.get("year");
+  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
 
-  let filtered = [...galleryMemoryDB];
+  try {
+    const res = await fetch(`${backendUrl}/api/v1/gallery`, {
+      cache: "no-store",
+    });
 
-  if (year && year !== "All" && year !== "all") {
-    filtered = filtered.filter((item) => item.year === year);
+    if (res.ok) {
+      const data = await res.json();
+      let categories = data.data?.categories || [];
+      let years = data.data?.years || [];
+
+      if (year && year !== "All" && year !== "all") {
+        categories = categories.filter((cat) => cat.year === year);
+      }
+
+      return NextResponse.json({
+        success: true,
+        tabs: years.length > 0 ? years : galleryTabs,
+        data: categories,
+        totalCategories: categories.length,
+      });
+    }
+  } catch (err) {
+    console.warn("Express Backend connection failed, serving static fallback:", err.message);
   }
 
-  // Ensure latest added images are always on top
-  filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  // Fallback if backend offline
+  let categories = [...initialGalleryCategories];
+  if (year && year !== "All" && year !== "all") {
+    categories = categories.filter((cat) => cat.year === year);
+  }
 
   return NextResponse.json({
     success: true,
     tabs: galleryTabs,
-    data: filtered,
-    total: filtered.length,
+    data: categories,
+    totalCategories: categories.length,
   });
 }
 

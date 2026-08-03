@@ -158,7 +158,7 @@ const QUESTIONS = [
 function SearchableSelect({
   label,
   value,
-  options,
+  options = [],
   placeholder,
   onChange,
   error,
@@ -187,7 +187,7 @@ function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Reset custom mode when parent clears the field value
+  // Sync customMode if value is set/cleared from outside
   useEffect(() => {
     if (!value) {
       setCustomMode(false);
@@ -198,13 +198,31 @@ function SearchableSelect({
   const getLabel = (opt) => (typeof opt === "object" ? opt.label : opt);
   const getValue = (opt) => (typeof opt === "object" ? opt.value : opt);
 
-  const filteredOptions = options.filter((opt) =>
+  // Prepare options with "Other / अन्य" and "Type Here... / यहाँ टाइप करें ✎" at bottom
+  const displayOptions = useMemo(() => {
+    if (!allowCustom) return options;
+
+    const cleanList = options.filter((opt) => {
+      const v = getValue(opt);
+      return v !== "Other / अन्य" && v !== "Other" && v !== "__TYPE_HERE__";
+    });
+
+    return [
+      ...cleanList,
+      { value: "Other / अन्य", label: "Other / अन्य" },
+      { value: "__TYPE_HERE__", label: "Type Here... / यहाँ टाइप करें ✎" },
+    ];
+  }, [options, allowCustom]);
+
+  const filteredOptions = displayOptions.filter((opt) =>
     getLabel(opt).toLowerCase().includes(query.toLowerCase())
   );
 
-  const selectedLabel = value && !customMode
-    ? getLabel(options.find((o) => getValue(o) === value) || { label: value })
-    : null;
+  const selectedLabel = useMemo(() => {
+    if (!value || customMode) return null;
+    const found = displayOptions.find((o) => getValue(o) === value);
+    return found ? getLabel(found) : value;
+  }, [value, customMode, displayOptions]);
 
   const handleToggle = () => {
     if (disabled || customMode) return;
@@ -218,16 +236,21 @@ function SearchableSelect({
     setQuery("");
   };
 
-  // When "Other / अन्य" is clicked — switch to inline text input mode
   const handleOptionClick = (val) => {
-    if (allowCustom && (val === "Other / अन्य" || val === "Other")) {
+    if (val === "__TYPE_HERE__") {
       setCustomMode(true);
       setCustomText("");
-      onChange({ target: { name, value: "" } });
+      onChange({ target: { name, value: "Other" } });
       setIsOpen(false);
       setQuery("");
       setTimeout(() => customInputRef.current?.focus(), 80);
+    } else if (val === "Other / अन्य" || val === "Other") {
+      setCustomMode(false);
+      onChange({ target: { name, value: "Other / अन्य" } });
+      setIsOpen(false);
+      setQuery("");
     } else {
+      setCustomMode(false);
       onChange({ target: { name, value: val } });
       setIsOpen(false);
       setQuery("");
@@ -237,7 +260,7 @@ function SearchableSelect({
   const handleCustomChange = (e) => {
     const text = e.target.value;
     setCustomText(text);
-    onChange({ target: { name, value: text } });
+    onChange({ target: { name, value: text ? text : "Other" } });
   };
 
   const handleBackToSelect = () => {
@@ -246,7 +269,7 @@ function SearchableSelect({
     onChange({ target: { name, value: "" } });
   };
 
-  // ── INLINE CUSTOM TEXT INPUT MODE ──────────────────────────
+  // ── SINGLE MAIN FIELD CONVERTS TO INPUT ON TYPE HERE ──────────────────────────
   if (customMode && allowCustom) {
     return (
       <div className="relative w-full min-w-0" ref={containerRef}>
@@ -274,8 +297,8 @@ function SearchableSelect({
           <button
             type="button"
             onClick={handleBackToSelect}
-            title="Back to list / सूची पर वापस जाएं"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[var(--primary)] transition-colors"
+            title="Back to dropdown list / वापस लिस्ट से चुनें"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-[var(--primary)] hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
           >
             <FiX className="text-base" />
           </button>
@@ -297,6 +320,7 @@ function SearchableSelect({
         </label>
       )}
 
+      {/* Main Dropdown Button */}
       <button
         type="button"
         disabled={disabled}
@@ -317,6 +341,7 @@ function SearchableSelect({
         <FiChevronDown className={`shrink-0 text-gray-400 text-sm sm:text-base transition-transform duration-200 ${isOpen ? "rotate-180 text-[var(--primary)]" : ""}`} />
       </button>
 
+      {/* Dropdown Options Popover */}
       <AnimatePresence>
         {isOpen && !disabled && (
           <motion.div
@@ -326,7 +351,6 @@ function SearchableSelect({
             transition={{ duration: 0.15 }}
             className="absolute left-0 right-0 top-full mt-1.5 z-40 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden"
           >
-            {/* Search Input */}
             {showSearch && (
               <div className="p-2 border-b border-gray-100">
                 <div className="relative">
@@ -337,12 +361,11 @@ function SearchableSelect({
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Type to search..."
-                    className="w-full pl-8 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-gray-200 focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] outline-none bg-gray-50"
+                    className="w-full pl-8 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-gray-200 focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)] outline-none bg-gray-50 text-gray-900 font-semibold"
                   />
                 </div>
               </div>
             )}
-            {/* Options list */}
             <div className="max-h-52 overflow-y-auto p-1.5 space-y-0.5 [scrollbar-width:thin]">
               {filteredOptions.length === 0 ? (
                 <div className="px-3.5 py-3 text-xs text-gray-400 text-center">No results found</div>
@@ -351,7 +374,9 @@ function SearchableSelect({
                   const val = getValue(opt);
                   const lbl = getLabel(opt);
                   const isSelected = val === value;
-                  const isOther = allowCustom && (val === "Other / अन्य" || val === "Other");
+                  const isOther = val === "Other / अन्य" || val === "Other";
+                  const isTypeHere = val === "__TYPE_HERE__";
+
                   return (
                     <div
                       key={`${val}-${idx}`}
@@ -359,8 +384,10 @@ function SearchableSelect({
                       className={`px-3.5 py-2.5 rounded-xl text-xs sm:text-sm cursor-pointer transition-colors flex items-center justify-between font-semibold ${
                         isSelected
                           ? "bg-red-50 text-[var(--primary)] font-bold"
+                          : isTypeHere
+                          ? "bg-red-50/60 text-[var(--primary)] hover:bg-red-100/70 font-bold border border-red-100"
                           : isOther
-                          ? "text-[var(--primary)] hover:bg-red-50/50 italic"
+                          ? "text-[var(--primary)] hover:bg-red-50/50 italic font-bold"
                           : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                       }`}
                     >
@@ -840,187 +867,58 @@ export default function StudentSurveyPage() {
 
             {/* Row 3: Date of Birth | Gender */}
             <div className="w-full min-w-0">
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs sm:text-sm font-bold text-gray-700 flex items-center gap-1.5">
-                  <FiCalendar className="text-[var(--primary)] text-sm" />
-                  Date of Birth / जन्म तिथि <span className="text-red-500 ml-0.5">*</span>
-                </label>
-                {/* Mode Toggle */}
-                <div className="flex items-center gap-0.5 bg-gray-100 rounded-lg p-0.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDobInputMode("calendar");
-                      setForm(prev => ({ ...prev, dob: "", dobDay: "", dobMonth: "", dobYear: "" }));
-                    }}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all ${dobInputMode === "calendar"
-                        ? "bg-[var(--primary)] text-white shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
-                      }`}
-                  >
-                    <FiCalendar className="text-xs" /> Calendar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDobInputMode("manual");
-                      setForm(prev => ({ ...prev, dob: "", dobDay: "", dobMonth: "", dobYear: "" }));
-                    }}
-                    className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all ${dobInputMode === "manual"
-                        ? "bg-[var(--primary)] text-white shadow-sm"
-                        : "text-gray-500 hover:text-gray-700"
-                      }`}
-                  >
-                    ✎ Manual
-                  </button>
-                </div>
+              <label className="block text-xs sm:text-sm font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                <FiCalendar className="text-[var(--primary)] text-sm" />
+                Date of Birth / जन्म तिथि <span className="text-red-500">*</span>
+              </label>
+
+              <div className="relative">
+                <input
+                  type="date"
+                  name="dob"
+                  value={form.dob}
+                  min={dobCalMin}
+                  max={dobCalMax}
+                  onChange={handleChange}
+                  className={`w-full px-3.5 py-3 text-xs sm:text-sm rounded-xl border font-semibold text-gray-900 cursor-pointer transition-all outline-none bg-white
+                    [&::-webkit-calendar-picker-indicator]:cursor-pointer
+                    [&::-webkit-calendar-picker-indicator]:opacity-80
+                    [&::-webkit-calendar-picker-indicator]:hover:opacity-100 ${
+                    errors.dob
+                      ? "border-red-500 ring-1 ring-red-200 bg-red-50/10"
+                      : form.dob && !errors.dob
+                      ? "border-emerald-500/80 ring-1 ring-emerald-100 bg-emerald-50/10"
+                      : "border-gray-300 hover:border-gray-400 focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]"
+                  }`}
+                />
               </div>
 
-              <AnimatePresence mode="wait">
-                {dobInputMode === "calendar" ? (
-                  <motion.div
-                    key="calendar"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    {/* Calendar native date input */}
-                    <div className="relative">
-                      <input
-                        type="date"
-                        name="dob"
-                        value={form.dob}
-                        min={dobCalMin}
-                        max={dobCalMax}
-                        onChange={handleChange}
-                        className={`w-full px-4 py-3 text-sm rounded-xl border font-semibold text-gray-800 cursor-pointer transition-all outline-none bg-white
-                          [&::-webkit-calendar-picker-indicator]:cursor-pointer
-                          [&::-webkit-calendar-picker-indicator]:opacity-70
-                          [&::-webkit-calendar-picker-indicator]:hover:opacity-100 ${
-                          errors.dob
-                            ? "border-red-500 ring-1 ring-red-200 bg-red-50/10"
-                            : form.dob && !errors.dob
-                            ? "border-emerald-500/80 ring-1 ring-emerald-100 bg-emerald-50/10"
-                            : "border-gray-300 hover:border-gray-400"
-                        }`}
-                      />
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1">
-                      <FiCalendar className="shrink-0" /> Age 4–18 years only
-                      {form.dob && (() => {
-                        const bd = new Date(form.dob);
-                        const today = new Date();
-                        let age = today.getFullYear() - bd.getFullYear();
-                        const m = today.getMonth() - bd.getMonth();
-                        if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
-                        const isValid = !isNaN(age) && age >= 4 && age <= 18;
-                        return (
-                          <span className={`ml-1 font-bold ${isValid ? "text-emerald-600" : "text-red-500"}`}>
-                            • Age: {age} years {isValid ? "✓" : "✕"}
-                          </span>
-                        );
-                      })()}
-                    </p>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    key="manual"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.15 }}
-                  >
-                    {/* Manual entry: Day | Month | Year */}
-                    <div className={`flex items-stretch rounded-xl border overflow-visible transition-all bg-white ${
-                      errors.dob
-                        ? "border-red-500 ring-1 ring-red-200 bg-red-50/10"
-                        : (form.dobDay && form.dobMonth && form.dobYear) && !errors.dob
-                        ? "border-emerald-500/80 ring-1 ring-emerald-100 bg-emerald-50/10"
-                        : "border-gray-300 hover:border-gray-400"
-                    }`}>
-                      {/* Day */}
-                      <div className="flex-1 min-w-0 flex flex-col">
-                        <input
-                          type="number"
-                          name="dobDay"
-                          value={form.dobDay}
-                          min="1" max="31"
-                          onChange={handleChange}
-                          placeholder="DD"
-                          className="w-full px-2 pt-2.5 pb-1 text-sm font-bold text-center text-gray-800 outline-none bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none placeholder:text-gray-300 placeholder:font-normal"
-                        />
-                        <span className="text-[9px] text-center text-gray-400 pb-1.5 font-semibold tracking-wide uppercase">Day</span>
-                      </div>
-
-                      <div className="w-px bg-gray-200 my-2" />
-
-                      {/* Month — Custom SearchableSelect matching brand design */}
-                      <div className="flex-[2] min-w-0 flex flex-col justify-center px-1">
-                        <SearchableSelect
-                          name="dobMonth"
-                          value={form.dobMonth}
-                          showSearch={false}
-                          options={[
-                            { value: "01", label: "January" },
-                            { value: "02", label: "February" },
-                            { value: "03", label: "March" },
-                            { value: "04", label: "April" },
-                            { value: "05", label: "May" },
-                            { value: "06", label: "June" },
-                            { value: "07", label: "July" },
-                            { value: "08", label: "August" },
-                            { value: "09", label: "September" },
-                            { value: "10", label: "October" },
-                            { value: "11", label: "November" },
-                            { value: "12", label: "December" },
-                          ]}
-                          placeholder="Select Month"
-                          onChange={handleChange}
-                        />
-                      </div>
-
-                      <div className="w-px bg-gray-200 my-2" />
-
-                      {/* Year */}
-                      <div className="flex-[1.2] min-w-0 flex flex-col">
-                        <input
-                          type="number"
-                          name="dobYear"
-                          value={form.dobYear}
-                          min={dobCalMinYear}
-                          max={dobCalMaxYear}
-                          onChange={handleChange}
-                          placeholder="YYYY"
-                          className="w-full px-2 pt-2.5 pb-1 text-sm font-bold text-center text-gray-800 outline-none bg-transparent [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none placeholder:text-gray-300 placeholder:font-normal"
-                        />
-                        <span className="text-[9px] text-center text-gray-400 pb-1.5 font-semibold tracking-wide uppercase">Year</span>
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-1.5 flex items-center gap-1">
-                      <FiCalendar className="shrink-0" /> Age 4–18 years only
-                      {form.dob && (() => {
-                        const bd = new Date(form.dob);
-                        const today = new Date();
-                        let age = today.getFullYear() - bd.getFullYear();
-                        const m = today.getMonth() - bd.getMonth();
-                        if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
-                        const isValid = !isNaN(age) && age >= 4 && age <= 18;
-                        if (!isNaN(age)) {
-                          return (
-                            <span className={`ml-1 font-bold ${isValid ? "text-emerald-600" : "text-red-500"}`}>
-                              • Age: {age} years {isValid ? "✓" : "✕"}
-                            </span>
-                          );
-                        }
-                      })()}
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {form.dob ? (
+                <p className="text-[11px] font-semibold mt-1 flex items-center gap-1">
+                  {(() => {
+                    const bd = new Date(form.dob);
+                    const today = new Date();
+                    let age = today.getFullYear() - bd.getFullYear();
+                    const m = today.getMonth() - bd.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
+                    const isValid = !isNaN(age) && age >= 4 && age <= 18;
+                    return (
+                      <span className={isValid ? "text-emerald-600 font-bold" : "text-red-500 font-bold"}>
+                        Age: {age} years {isValid ? "✓" : "(Must be 4–18 years)"}
+                      </span>
+                    );
+                  })()}
+                </p>
+              ) : (
+                <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                  <FiCalendar className="shrink-0" /> Type directly or tap calendar picker (Age 4–18)
+                </p>
+              )}
 
               {errors.dob && (
-                <p className="text-xs text-red-500 mt-1 flex items-center gap-1"><FiAlertCircle /> {errors.dob}</p>
+                <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                  <FiAlertCircle /> {errors.dob}
+                </p>
               )}
             </div>
 

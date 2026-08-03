@@ -90,7 +90,7 @@ export default function About() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
-                  className="paragraph text-xs sm:text-sm lg:text-base xl:text-lg leading-relaxed sm:leading-relaxed font-medium"
+                  className="paragraph text-xs sm:text-sm lg:text-base xl:text-lg leading-relaxed sm:leading-relaxed font-medium text-justify"
                 >
                   {line}
                 </motion.p>

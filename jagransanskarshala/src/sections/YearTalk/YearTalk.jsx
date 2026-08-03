@@ -97,7 +97,7 @@ export default function YearTalk() {
           </motion.h2>
 
           {/* Mobile 2-col card grid */}
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             <AnimatePresence>
               {formattedTopics.map((topic, index) => {
                 if (topic.isPublished) {
@@ -113,25 +113,25 @@ export default function YearTalk() {
                         style={{ background: "var(--primary)" }}
                       >
                         <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
-                        <div className="relative z-10 p-3 flex flex-col h-full">
+                        <div className="relative z-10 p-3.5 sm:p-4 flex flex-col h-full">
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-[9px] font-bold px-2 py-1 rounded-full bg-white/25 text-white uppercase leading-none whitespace-nowrap">
+                            <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-white/25 text-white uppercase leading-none whitespace-nowrap">
                               {topic.week} • {isHindi ? "Active" : "Active"}
                             </span>
-                            <span className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center shrink-0 ml-1">
-                              <FaArrowRight className="text-[8px] text-white" />
+                            <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0 ml-1">
+                              <FaArrowRight className="text-[9px] text-white" />
                             </span>
                           </div>
-                          <h3 className="text-white font-extrabold text-[13px] leading-snug mb-1">
+                          <h3 className="text-white font-black text-base sm:text-lg leading-snug mb-1">
                             {topic.title}
                           </h3>
-                          <p className="text-white/80 text-[10px] leading-relaxed line-clamp-2 flex-1">
+                          <p className="text-white/90 text-xs sm:text-sm font-medium leading-relaxed line-clamp-2 flex-1">
                             {topic.desc}
                           </p>
-                          <div className="mt-2 pt-2 border-t border-white/20">
-                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/15 border border-white/20">
-                              <FaCalendarAlt className="text-white text-[8px] shrink-0" />
-                              <span className="text-white text-[9px] font-bold leading-none">{topic.publishDate}</span>
+                          <div className="mt-2.5 pt-2 border-t border-white/20">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/15 border border-white/20">
+                              <FaCalendarAlt className="text-white text-[9px] shrink-0" />
+                              <span className="text-white text-[10px] sm:text-xs font-bold leading-none">{topic.publishDate}</span>
                             </div>
                           </div>
                         </div>
@@ -153,26 +153,26 @@ export default function YearTalk() {
                     <div className="absolute -right-2 -bottom-2 opacity-[0.07] pointer-events-none">
                       <FaLock className="text-white text-[44px]" />
                     </div>
-                    <div className="relative z-10 p-3 flex flex-col h-full">
+                    <div className="relative z-10 p-3.5 sm:p-4 flex flex-col h-full">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[9px] font-semibold px-2 py-1 rounded-full bg-white/15 text-white/80 uppercase leading-none whitespace-nowrap">
+                        <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/15 text-white/80 uppercase leading-none whitespace-nowrap">
                           {topic.week}
                         </span>
-                        <span className="flex items-center gap-0.5 text-[9px] text-white/70 bg-black/20 px-2 py-1 rounded-full ml-1 whitespace-nowrap">
-                          <FaLock className="text-[7px]" />
+                        <span className="flex items-center gap-1 text-[10px] text-white/80 bg-black/20 px-2.5 py-1 rounded-full ml-1 whitespace-nowrap font-bold">
+                          <FaLock className="text-[8px]" />
                           {isHindi ? "जल्द" : "Soon"}
                         </span>
                       </div>
-                      <h3 className="text-white/90 font-bold text-[13px] leading-snug mb-1">
+                      <h3 className="text-white/95 font-black text-base sm:text-lg leading-snug mb-1">
                         {topic.title}
                       </h3>
-                      <p className="text-white/60 text-[10px] leading-relaxed line-clamp-2 flex-1">
+                      <p className="text-white/80 text-xs sm:text-sm font-medium leading-relaxed line-clamp-2 flex-1">
                         {topic.desc}
                       </p>
-                      <div className="mt-2 pt-2 border-t border-white/15">
-                        <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/15 border border-white/20">
-                          <FaCalendarAlt className="text-white/80 text-[8px] shrink-0" />
-                          <span className="text-white/90 text-[9px] font-bold leading-none">{topic.publishDate}</span>
+                      <div className="mt-2.5 pt-2 border-t border-white/15">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/15 border border-white/20">
+                          <FaCalendarAlt className="text-white/80 text-[9px] shrink-0" />
+                          <span className="text-white/90 text-[10px] sm:text-xs font-bold leading-none">{topic.publishDate}</span>
                         </div>
                       </div>
                     </div>
@@ -200,7 +200,7 @@ export default function YearTalk() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="heading-lg mb-5 text-left"
+              className="heading-lg mb-6 text-left"
             >
               <span style={{ color: "var(--primary)" }}>
                 {t.yearTalk?.headingMain || "Talks"}
@@ -208,7 +208,7 @@ export default function YearTalk() {
               {t.yearTalk?.headingHighlight || "So Far"}
             </motion.h2>
 
-            <div className="grid grid-cols-2 gap-2.5 flex-1 auto-rows-fr">
+            <div className="grid grid-cols-2 gap-3.5 flex-1 auto-rows-fr">
               <AnimatePresence>
                 {formattedTopics.map((topic, index) => {
                   if (topic.isPublished) {
@@ -224,29 +224,29 @@ export default function YearTalk() {
                           style={{ background: "var(--primary)" }}
                         >
                           <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-white/10 via-transparent to-transparent pointer-events-none" />
-                          <div className="relative z-10 p-3.5 flex flex-col h-full">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-white/25 text-white uppercase leading-none whitespace-nowrap">
+                          <div className="relative z-10 p-4 xl:p-4.5 flex flex-col h-full">
+                            <div className="flex items-center justify-between mb-2.5">
+                              <span className="text-[11px] xl:text-xs font-extrabold px-3 py-1 rounded-full bg-white/25 text-white uppercase leading-none whitespace-nowrap">
                                 {topic.week} • {isHindi ? "सक्रिय" : "Active"}
                               </span>
                               <motion.span
                                 whileHover={{ rotate: 45 }}
                                 transition={{ duration: 0.2 }}
-                                className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white transition-all duration-300 shrink-0 ml-1"
+                                className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white transition-all duration-300 shrink-0 ml-1"
                               >
-                                <FaArrowRight className="text-[9px] text-white group-hover:text-[var(--primary)]" />
+                                <FaArrowRight className="text-[10px] text-white group-hover:text-[var(--primary)]" />
                               </motion.span>
                             </div>
-                            <h3 className="text-white font-extrabold text-[15px] leading-snug mb-1">
+                            <h3 className="text-white font-black text-lg xl:text-xl leading-snug mb-1.5">
                               {topic.title}
                             </h3>
-                            <p className="text-white/80 text-xs leading-relaxed line-clamp-2 flex-1">
+                            <p className="text-white/90 text-xs xl:text-sm font-medium leading-relaxed line-clamp-2 flex-1">
                               {topic.desc}
                             </p>
-                            <div className="mt-2 pt-2 border-t border-white/20">
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/15 border border-white/25">
-                                <FaCalendarAlt className="text-white text-[10px] shrink-0" />
-                                <span className="text-white text-[11px] font-bold leading-none">{topic.publishDate}</span>
+                            <div className="mt-3 pt-2.5 border-t border-white/20">
+                              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 border border-white/25">
+                                <FaCalendarAlt className="text-white text-[11px] shrink-0" />
+                                <span className="text-white text-xs font-bold leading-none">{topic.publishDate}</span>
                               </div>
                             </div>
                           </div>
@@ -268,26 +268,26 @@ export default function YearTalk() {
                       <div className="absolute -right-2 -bottom-2 opacity-[0.07] pointer-events-none">
                         <FaLock className="text-white text-[50px]" />
                       </div>
-                      <div className="relative z-10 p-3.5 flex flex-col h-full">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-white/15 text-white/80 uppercase leading-none whitespace-nowrap">
+                      <div className="relative z-10 p-4 xl:p-4.5 flex flex-col h-full">
+                        <div className="flex items-center justify-between mb-2.5">
+                          <span className="text-[11px] xl:text-xs font-bold px-3 py-1 rounded-full bg-white/15 text-white/80 uppercase leading-none whitespace-nowrap">
                             {topic.week}
                           </span>
-                          <span className="flex items-center gap-1 text-[10px] text-white/70 bg-black/20 px-2.5 py-1 rounded-full ml-1 whitespace-nowrap">
-                            <FaLock className="text-[8px]" />
+                          <span className="flex items-center gap-1 text-[11px] text-white/80 bg-black/20 px-3 py-1 rounded-full ml-1 whitespace-nowrap font-bold">
+                            <FaLock className="text-[9px]" />
                             {isHindi ? "जल्द" : "Soon"}
                           </span>
                         </div>
-                        <h3 className="text-white/90 font-bold text-[15px] leading-snug mb-1">
+                        <h3 className="text-white/95 font-black text-lg xl:text-xl leading-snug mb-1.5">
                           {topic.title}
                         </h3>
-                        <p className="text-white/60 text-xs leading-relaxed line-clamp-2 flex-1">
+                        <p className="text-white/80 text-xs xl:text-sm font-medium leading-relaxed line-clamp-2 flex-1">
                           {topic.desc}
                         </p>
-                        <div className="mt-2 pt-2 border-t border-white/15">
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white/15 border border-white/20">
-                            <FaCalendarAlt className="text-white/80 text-[10px] shrink-0" />
-                            <span className="text-white/90 text-[11px] font-bold leading-none">{topic.publishDate}</span>
+                        <div className="mt-3 pt-2.5 border-t border-white/15">
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/15 border border-white/20">
+                            <FaCalendarAlt className="text-white/80 text-[11px] shrink-0" />
+                            <span className="text-white/90 text-xs font-bold leading-none">{topic.publishDate}</span>
                           </div>
                         </div>
                       </div>

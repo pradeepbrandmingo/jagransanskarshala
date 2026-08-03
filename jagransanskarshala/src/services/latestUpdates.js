@@ -5,27 +5,24 @@
 export const latestUpdatesData = [
   {
     id: 1,
-    titleEn: "Parents Orientation Session on Sunday at 10 AM.",
-    titleHi: "रविवार सुबह 10 बजे अभिभावक अभिविन्यास सत्र।",
-    link: "#",
+    titleEn: "Read the Latest Stories & Stay Updated",
+    titleHi: "नवीनतम कहानियाँ पढ़ें और अपडेट रहें",
+    link: "/story/1",
+    actionType: "navigate",
   },
   {
     id: 2,
-    titleEn: "Admissions for Value Education Program are now open.",
-    titleHi: "मूल्य शिक्षा कार्यक्रम के लिए प्रवेश अब खुले हैं।",
+    titleEn: "Participate in India's Largest Survey",
+    titleHi: "भारत के सबसे बड़े सर्वे में भाग लें",
     link: "#",
+    actionType: "surveyModal",
   },
   {
     id: 3,
-    titleEn: "New Story Added: The Power of Honesty.",
-    titleHi: "नई कहानी जोड़ी गई: ईमानदारी की शक्ति।",
+    titleEn: "Download Your Participation Certificate After Completing the Survey",
+    titleHi: "सर्वे पूरा करने के बाद अपना सहभागिता प्रमाणपत्र डाउनलोड करें",
     link: "#",
-  },
-  {
-    id: 4,
-    titleEn: "Digital Awareness Workshop starts from Monday.",
-    titleHi: "सोमवार से डिजिटल जागरूकता कार्यशाला शुरू हो रही है।",
-    link: "#",
+    actionType: "none",
   },
 ];
 

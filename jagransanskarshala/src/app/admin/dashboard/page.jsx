@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -11,9 +11,7 @@ import {
   FaBell,
   FaRightFromBracket,
   FaFileExport,
-  FaRotate,
   FaEye,
-  FaFilter,
   FaMagnifyingGlass,
   FaGraduationCap,
   FaUserGroup,
@@ -28,32 +26,17 @@ import {
   FaRegCalendar,
   FaImages,
   FaNewspaper,
+  FaPlus,
+  FaTrash,
+  FaPen,
+  FaUpload,
+  FaFolderPlus,
+  FaCalendarPlus,
 } from "react-icons/fa6";
 import Logo from "@/assets/images/Logo-english.png";
-
-// Base seed entries for Survey Submissions
-const seedSurveyData = [
-  { firstName: "Rahul", lastName: "Kumar", email: "rahul.k@email.com", mobile: "98XXXXX12", dob: "15/03/2012", gender: "Male", type: "Student", occupation: "Student", studentClass: "8th", state: "Uttar Pradesh", city: "Noida", school: "ABC Public School" },
-  { firstName: "Sanjay", lastName: "Kumar", email: "sanjay.k@email.com", mobile: "97XXXXX21", dob: "22/08/1985", gender: "Male", type: "Parent", occupation: "Business", studentClass: "-", state: "Delhi", city: "South Delhi", school: "-" },
-  { firstName: "Ananya", lastName: "Sharma", email: "ananya.s@email.com", mobile: "99XXXXX45", dob: "10/06/2011", gender: "Female", type: "Student", occupation: "Student", studentClass: "9th", state: "Uttar Pradesh", city: "Lucknow", school: "Kendriya Vidyalaya" },
-  { firstName: "Rajesh", lastName: "Sharma", email: "rajesh.s@email.com", mobile: "96XXXXX33", dob: "05/12/1978", gender: "Male", type: "Parent", occupation: "Teacher", studentClass: "-", state: "Gujarat", city: "Surat", school: "-" },
-  { firstName: "Aarav", lastName: "Singh", email: "aarav.s@email.com", mobile: "95XXXXX67", dob: "28/01/2013", gender: "Male", type: "Student", occupation: "Student", studentClass: "7th", state: "Madhya Pradesh", city: "Bhopal", school: "Sagar Public School" },
-  { firstName: "Pooja", lastName: "Verma", email: "pooja.v@email.com", mobile: "94XXXXX89", dob: "18/09/1990", gender: "Female", type: "Parent", occupation: "Homemaker", studentClass: "-", state: "Bihar", city: "Patna", school: "-" },
-  { firstName: "Vikram", lastName: "Malhotra", email: "vikram.m@email.com", mobile: "93XXXXX55", dob: "02/07/2012", gender: "Male", type: "Student", occupation: "Student", studentClass: "8th", state: "Rajasthan", city: "Jaipur", school: "Maharani Gayatri Devi School" },
-  { firstName: "Meena", lastName: "Gupta", email: "meena.g@email.com", mobile: "92XXXXX44", dob: "11/04/1982", gender: "Female", type: "Parent", occupation: "Doctor", studentClass: "-", state: "Punjab", city: "Ludhiana", school: "-" },
-];
-
-const mockSurveyData = Array.from({ length: 64 }, (_, idx) => {
-  const seed = seedSurveyData[idx % seedSurveyData.length];
-  const idNum = 102535 - idx;
-  const day = 31 - Math.floor(idx / 3);
-  const dateStr = `${day > 0 ? day : 1} Jul 2026, 10:${String((idx * 7) % 60).padStart(2, "0")} AM`;
-  return {
-    ...seed,
-    id: String(idNum),
-    submittedOn: dateStr,
-  };
-});
+import * as XLSX from "xlsx";
+import schoolsData from "@/data/schoolsData.json";
+import AdminSidebar from "@/components/Admin/AdminSidebar";
 
 // Helper functions for Date calculations
 const isSameDay = (d1, d2) => {
@@ -127,45 +110,13 @@ const datePresets = [
   { id: "custom", label: "Custom" },
 ];
 
-const stateOptions = [
-  { value: "all", label: "All States" },
-  { value: "Uttar Pradesh", label: "Uttar Pradesh" },
-  { value: "Delhi", label: "Delhi" },
-  { value: "Gujarat", label: "Gujarat" },
-  { value: "Madhya Pradesh", label: "Madhya Pradesh" },
-  { value: "Bihar", label: "Bihar" },
-  { value: "Rajasthan", label: "Rajasthan" },
-  { value: "Punjab", label: "Punjab" },
-];
-
-const cityOptions = [
-  { value: "all", label: "All Cities" },
-  { value: "Noida", label: "Noida" },
-  { value: "South Delhi", label: "South Delhi" },
-  { value: "Lucknow", label: "Lucknow" },
-  { value: "Surat", label: "Surat" },
-  { value: "Bhopal", label: "Bhopal" },
-  { value: "Patna", label: "Patna" },
-  { value: "Jaipur", label: "Jaipur" },
-  { value: "Ludhiana", label: "Ludhiana" },
-];
-
-const schoolOptions = [
-  { value: "all", label: "All Schools" },
-  { value: "ABC Public School", label: "ABC Public School" },
-  { value: "Kendriya Vidyalaya", label: "Kendriya Vidyalaya" },
-  { value: "Sagar Public School", label: "Sagar Public School" },
-  { value: "Maharani Gayatri Devi School", label: "Maharani Gayatri Devi School" },
-  { value: "Delhi Public School", label: "Delhi Public School" },
-  { value: "St. Xavier's School", label: "St. Xavier's School" },
-  { value: "St. Michael's High School", label: "St. Michael's High School" },
-  { value: "DAV Public School", label: "DAV Public School" },
-];
-
 export default function AdminDashboardPage() {
   const router = useRouter();
   const [admin, setAdmin] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Live MongoDB Submissions State
+  const [liveSurveys, setLiveSurveys] = useState([]);
 
   // Sidebar state
   const [activeMenu, setActiveMenu] = useState("survey-data");
@@ -182,6 +133,76 @@ export default function AdminDashboardPage() {
 
   // Custom Dropdown Open State: 'none' | 'date' | 'state' | 'city' | 'school'
   const [openDropdown, setOpenDropdown] = useState("none");
+
+  // Dynamic State Options derived from schoolsData.json & live submissions
+  const stateOptions = useMemo(() => {
+    const knownStates = Object.keys(schoolsData || {}).sort();
+    const customStates = new Set();
+    liveSurveys.forEach((s) => {
+      if (s.state && !schoolsData[s.state] && s.state !== "Other") {
+        customStates.add(s.state);
+      }
+    });
+
+    return [
+      { value: "all", label: "All States" },
+      ...knownStates.map((st) => ({ value: st, label: st })),
+      { value: "Other", label: "Other / अन्य (Custom)" },
+      ...Array.from(customStates).sort().map((st) => ({ value: st, label: st })),
+    ];
+  }, [liveSurveys]);
+
+  // Dynamic City Options based on selected stateFilter
+  const cityOptions = useMemo(() => {
+    if (!stateFilter || stateFilter === "all") {
+      return [{ value: "all", label: "Select State First" }];
+    }
+    if (stateFilter === "Other") {
+      const customCities = new Set();
+      liveSurveys.forEach((s) => {
+        if (s.city) customCities.add(s.city);
+      });
+      return [
+        { value: "all", label: "All Cities" },
+        { value: "Other", label: "Other / अन्य (Custom)" },
+        ...Array.from(customCities).sort().map((c) => ({ value: c, label: c })),
+      ];
+    }
+    const stateObj = schoolsData[stateFilter];
+    const cities = stateObj ? Object.keys(stateObj).sort() : [];
+    return [
+      { value: "all", label: "All Cities" },
+      ...cities.map((c) => ({ value: c, label: c })),
+      { value: "Other", label: "Other / अन्य (Custom)" },
+    ];
+  }, [stateFilter, liveSurveys]);
+
+  // Dynamic School Options based on selected stateFilter & cityFilter
+  const schoolOptions = useMemo(() => {
+    if (!stateFilter || stateFilter === "all") {
+      return [{ value: "all", label: "Select State & City First" }];
+    }
+    if (!cityFilter || cityFilter === "all") {
+      return [{ value: "all", label: "Select City First" }];
+    }
+    if (stateFilter === "Other" || cityFilter === "Other") {
+      const customSchools = new Set();
+      liveSurveys.forEach((s) => {
+        if (s.school) customSchools.add(s.school);
+      });
+      return [
+        { value: "all", label: "All Schools" },
+        { value: "Other", label: "Other / अन्य (Custom)" },
+        ...Array.from(customSchools).sort().map((sch) => ({ value: sch, label: sch })),
+      ];
+    }
+    const schools = schoolsData[stateFilter]?.[cityFilter] || [];
+    return [
+      { value: "all", label: "All Schools" },
+      ...schools.map((sch) => ({ value: sch, label: sch })),
+      { value: "Other", label: "Other / अन्य (Custom)" },
+    ];
+  }, [stateFilter, cityFilter, liveSurveys]);
 
   // Date Filter Preset & Custom Picker States
   const [datePreset, setDatePreset] = useState("30days");
@@ -227,9 +248,6 @@ export default function AdminDashboardPage() {
     localStorage.removeItem("adminData");
     router.push("/admin-login");
   };
-
-  // Live MongoDB Submissions State
-  const [liveSurveys, setLiveSurveys] = useState([]);
 
   // Fetch Live Survey Submissions from Backend API
   const fetchLiveSurveys = async () => {
@@ -313,24 +331,69 @@ export default function AdminDashboardPage() {
     if (tabFilter === "parent" && item.type.toLowerCase() !== "parent") return false;
     if (tabFilter === "student" && item.type.toLowerCase() !== "student") return false;
 
-    // Search query
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const fullName = `${item.firstName} ${item.lastName}`.toLowerCase();
-      const matchName = fullName.includes(q);
-      const matchMobile = item.mobile.toLowerCase().includes(q);
-      const matchSchool = item.school.toLowerCase().includes(q);
-      const matchEmail = item.email.toLowerCase().includes(q);
-      const matchId = item.id.toLowerCase().includes(q);
-      if (!matchName && !matchMobile && !matchSchool && !matchEmail && !matchId) return false;
+    // Global Search Query across ALL fields of lead
+    if (searchQuery && searchQuery.trim() !== "") {
+      const q = searchQuery.trim().toLowerCase();
+      const fieldsToSearch = [
+        item.id,
+        item.firstName,
+        item.lastName,
+        `${item.firstName || ""} ${item.lastName || ""}`,
+        item.email,
+        item.mobile,
+        item.dob,
+        item.gender,
+        item.type,
+        item.occupation,
+        item.studentClass,
+        item.state,
+        item.city,
+        item.school,
+        item.submittedOn,
+      ];
+      const matchesAnyField = fieldsToSearch.some(
+        (val) => val && String(val).toLowerCase().includes(q)
+      );
+      if (!matchesAnyField) return false;
     }
 
-    // State filter
-    if (stateFilter !== "all" && item.state !== stateFilter) return false;
-    // City filter
-    if (cityFilter !== "all" && item.city !== cityFilter) return false;
-    // School filter
-    if (schoolFilter !== "all" && item.school !== schoolFilter) return false;
+    // Known standard states from schoolsData
+    const knownStates = Object.keys(schoolsData || {});
+
+    // State filter (Handles "Other / अन्य" and custom state entries)
+    if (stateFilter !== "all") {
+      if (stateFilter === "Other") {
+        const isStandard = knownStates.includes(item.state);
+        const isOther = !item.state || item.state.toLowerCase().includes("other") || !isStandard;
+        if (!isOther) return false;
+      } else {
+        if (item.state !== stateFilter) return false;
+      }
+    }
+
+    // City filter (Handles "Other / अन्य" and custom city entries)
+    if (cityFilter !== "all") {
+      if (cityFilter === "Other") {
+        const knownCities = stateFilter && schoolsData[stateFilter] ? Object.keys(schoolsData[stateFilter]) : [];
+        const isStandard = knownCities.includes(item.city);
+        const isOther = !item.city || item.city.toLowerCase().includes("other") || !isStandard;
+        if (!isOther) return false;
+      } else {
+        if (item.city !== cityFilter) return false;
+      }
+    }
+
+    // School filter (Handles "Other / अन्य" and custom school entries)
+    if (schoolFilter !== "all") {
+      if (schoolFilter === "Other") {
+        const knownSchools = stateFilter && cityFilter && schoolsData[stateFilter]?.[cityFilter] ? schoolsData[stateFilter][cityFilter] : [];
+        const isStandard = knownSchools.includes(item.school);
+        const isOther = !item.school || item.school.toLowerCase().includes("other") || !isStandard;
+        if (!isOther) return false;
+      } else {
+        if (item.school !== schoolFilter) return false;
+      }
+    }
 
     // Date Range Filter
     if (item.submittedOn) {
@@ -401,6 +464,67 @@ export default function AdminDashboardPage() {
     setSelectedRows((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
+  };
+
+  // Export Data to Excel (.xlsx) File
+  const handleExportData = () => {
+    let dataToExport = [];
+    if (selectedRows && selectedRows.length > 0) {
+      // Export ONLY selected rows if checkboxes are checked
+      dataToExport = filteredData.filter((row) => selectedRows.includes(row.id));
+      if (dataToExport.length === 0) {
+        dataToExport = currentDataset.filter((row) => selectedRows.includes(row.id));
+      }
+    } else {
+      // Export all entries matching current active filters & date range
+      dataToExport = filteredData;
+    }
+
+    if (!dataToExport || dataToExport.length === 0) {
+      alert("No survey data available to export / एक्सपोर्ट करने के लिए कोई डेटा नहीं है।");
+      return;
+    }
+
+    const excelRows = dataToExport.map((item, idx) => ({
+      "S.No": idx + 1,
+      "ID": item.id || "-",
+      "Survey Type": item.type || "-",
+      "First Name": item.firstName || "-",
+      "Last Name": item.lastName || "-",
+      "Email Address": item.email || "-",
+      "Mobile Number": item.mobile || "-",
+      "Date of Birth": item.dob || "-",
+      "Gender": item.gender || "-",
+      "Occupation": item.occupation || "-",
+      "Class": item.studentClass || "-",
+      "State": item.state || "-",
+      "City": item.city || "-",
+      "School": item.school || "-",
+      "Submitted On": item.submittedOn || "-",
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelRows);
+
+    // Auto-fit column widths
+    const max_widths = Object.keys(excelRows[0] || {}).map((key) => {
+      const maxLen = Math.max(
+        key.length,
+        ...excelRows.map((r) => String(r[key] || "").length)
+      );
+      return { wch: Math.min(Math.max(maxLen + 3, 10), 40) };
+    });
+    worksheet["!cols"] = max_widths;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Survey Submissions");
+
+    const dateStr = new Date().toISOString().split("T")[0];
+    const isSelectedMode = selectedRows && selectedRows.length > 0;
+    const fileName = isSelectedMode
+      ? `Jagran_Sanskarshala_${selectedRows.length}_Selected_Surveys_${dateStr}.xlsx`
+      : `Jagran_Sanskarshala_Survey_Data_${dateStr}.xlsx`;
+
+    XLSX.writeFile(workbook, fileName);
   };
 
   const renderPaginationButtons = () => {
@@ -501,161 +625,12 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="h-screen w-full bg-[#f8f5f0] text-gray-800 flex flex-col lg:flex-row font-admin overflow-hidden">
-      {/* =========================================================
-          LEFT SIDEBAR (Fixed & Sticky - Theme Red matching Ref UI)
-         ========================================================= */}
-      {/* Mobile Overlay */}
-      {sidebarOpen && (
-        <div
-          onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-xs"
-        />
-      )}
-
-      <aside
-        className={`fixed lg:sticky top-0 left-0 bottom-0 z-50 w-60 xl:w-64 h-screen bg-[var(--primary)] text-white flex flex-col justify-between transition-transform duration-300 shadow-xl shrink-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-          }`}
-      >
-        <div className="flex flex-col min-h-0">
-          {/* Sidebar Header with Logo */}
-          <div className="p-4 border-b border-red-800/60 flex items-center justify-between shrink-0">
-            <Link href="/" className="bg-white p-2 rounded-2xl inline-block shadow-md hover:scale-[1.02] transition-transform">
-              <Image src={Logo} alt="Logo" width={130} height={40} className="h-8.5 w-auto object-contain" priority />
-            </Link>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-white/80 hover:text-white p-2"
-            >
-              <FaXmark className="text-xl" />
-            </button>
-          </div>
-
-          {/* Navigation Links */}
-          <nav className="p-3 space-y-1.5 overflow-y-auto no-scrollbar max-h-[calc(100vh-140px)]">
-            {/* Survey Data */}
-            <button
-              onClick={() => {
-                setActiveMenu("survey-data");
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer ${activeMenu === "survey-data"
-                ? "bg-white text-[var(--primary)] shadow-lg shadow-red-950/20"
-                : "text-white/90 hover:bg-white/10 hover:text-white"
-                }`}
-            >
-              <FaTableCells className="text-lg shrink-0" />
-              <div className="text-left leading-tight">
-                <div className="font-extrabold text-xs sm:text-sm tracking-tight">Survey Data</div>
-                <div className="text-[10px] opacity-80 font-medium">सर्वे फॉर्म डेटा</div>
-              </div>
-            </button>
-
-            {/* Story Publish */}
-            <button
-              onClick={() => {
-                setActiveMenu("story-publish");
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer ${activeMenu === "story-publish"
-                ? "bg-white text-[var(--primary)] shadow-lg shadow-red-950/20"
-                : "text-white/90 hover:bg-white/10 hover:text-white"
-                }`}
-            >
-              <FaNewspaper className="text-lg shrink-0" />
-              <div className="text-left leading-tight">
-                <div className="font-extrabold text-xs sm:text-sm tracking-tight">Publish Story</div>
-                <div className="text-[10px] opacity-80 font-medium">कहानी प्रकाशित करें</div>
-              </div>
-            </button>
-
-            {/* Gallery Management */}
-            <button
-              onClick={() => {
-                setActiveMenu("gallery-mgmt");
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer ${activeMenu === "gallery-mgmt"
-                ? "bg-white text-[var(--primary)] shadow-lg shadow-red-950/20"
-                : "text-white/90 hover:bg-white/10 hover:text-white"
-                }`}
-            >
-              <FaImages className="text-lg shrink-0" />
-              <div className="text-left leading-tight">
-                <div className="font-extrabold text-xs sm:text-sm tracking-tight">Gallery Management</div>
-                <div className="text-[10px] opacity-80 font-medium">गैलरी प्रबंधन</div>
-              </div>
-            </button>
-
-            {/* Analytics */}
-            <button
-              onClick={() => {
-                setActiveMenu("analytics");
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer ${activeMenu === "analytics"
-                ? "bg-white text-[var(--primary)] shadow-lg shadow-red-950/20"
-                : "text-white/90 hover:bg-white/10 hover:text-white"
-                }`}
-            >
-              <FaChartPie className="text-lg shrink-0" />
-              <div className="text-left leading-tight">
-                <div className="font-extrabold text-xs sm:text-sm tracking-tight">Analytics</div>
-                <div className="text-[10px] opacity-80 font-medium">एनालिटिक्स</div>
-              </div>
-            </button>
-
-            {/* Contact Leads */}
-            <button
-              onClick={() => {
-                setActiveMenu("leads");
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer ${activeMenu === "leads"
-                ? "bg-white text-[var(--primary)] shadow-lg shadow-red-950/20"
-                : "text-white/90 hover:bg-white/10 hover:text-white"
-                }`}
-            >
-              <FaAddressBook className="text-lg shrink-0" />
-              <div className="text-left leading-tight">
-                <div className="font-extrabold text-xs sm:text-sm tracking-tight">Contact Leads</div>
-                <div className="text-[10px] opacity-80 font-medium">कॉन्टैक्ट लीड्स</div>
-              </div>
-            </button>
-
-            {/* Push Notification */}
-            <button
-              onClick={() => {
-                setActiveMenu("notifications");
-                setSidebarOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-sm font-bold transition-all cursor-pointer ${activeMenu === "notifications"
-                ? "bg-white text-[var(--primary)] shadow-lg shadow-red-950/20"
-                : "text-white/90 hover:bg-white/10 hover:text-white"
-                }`}
-            >
-              <FaBell className="text-lg shrink-0" />
-              <div className="text-left leading-tight">
-                <div className="font-extrabold text-xs sm:text-sm tracking-tight">Push Notification</div>
-                <div className="text-[10px] opacity-80 font-medium">पुश नोटिफिकेशन</div>
-              </div>
-            </button>
-          </nav>
-        </div>
-
-        {/* Sidebar Footer Fixed Logout */}
-        <div className="p-3.5 border-t border-red-800/60 shrink-0 bg-[var(--primary)]">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-sm font-bold text-white/90 hover:bg-white/10 hover:text-white transition-all cursor-pointer"
-          >
-            <FaRightFromBracket className="text-lg shrink-0 text-white" />
-            <div className="text-left leading-tight">
-              <div className="font-extrabold text-xs sm:text-sm tracking-tight">Logout</div>
-              <div className="text-[10px] opacity-80 font-medium">लॉगआउट</div>
-            </div>
-          </button>
-        </div>
-      </aside>
+      {/* Shared Modular Sidebar Component */}
+      <AdminSidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        activeMenu="survey-data"
+      />
 
       {/* =========================================================
           MAIN DASHBOARD CONTENT AREA (Scrolls independently)
@@ -685,515 +660,527 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Export Button */}
             <button
-              onClick={() => alert("Export feature will download survey data in Excel/CSV format.")}
-              className="bg-white border border-gray-200 hover:border-gray-300 px-4 py-2 rounded-2xl text-xs font-bold text-gray-700 shadow-2xs hover:bg-gray-50 transition-all flex items-center gap-2 cursor-pointer"
+              onClick={handleExportData}
+              className="bg-white border border-gray-200 hover:border-gray-300 px-4 py-2 rounded-2xl text-xs font-bold text-gray-700 shadow-2xs hover:bg-gray-50 transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+              title={selectedRows.length > 0 ? `Export ${selectedRows.length} selected entries` : "Export all filtered data"}
             >
-              <FaFileExport className="text-gray-500" />
-              <span>Export</span>
+              <FaFileExport className="text-[var(--primary)]" />
+              <span>
+                {selectedRows.length > 0
+                  ? `Export Selected (${selectedRows.length})`
+                  : "Export"}
+              </span>
             </button>
           </div>
         </header>
 
         {/* Content Container */}
         <div className="px-4 sm:px-8 pb-8 space-y-6">
-          {/* =========================================================
-              TOP STAT CARDS WITH COUNT ANIMATIONS (Matching Ref UI)
-             ========================================================= */}
-          {/* Filter Sub-Tabs: All Data / Parent Data / Student Data */}
-          <div className="bg-white rounded-3xl p-6 shadow-xs border border-gray-200/80">
-            <div className="flex items-center gap-8 border-b border-gray-100 pb-4 mb-6">
-              <button
-                onClick={() => setTabFilter("all")}
-                className={`text-sm font-extrabold pb-2 relative transition-all cursor-pointer ${tabFilter === "all"
-                  ? "text-[var(--primary)]"
-                  : "text-gray-500 hover:text-gray-800"
-                  }`}
-              >
-                <span>All Data</span>
-                {tabFilter === "all" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--primary)] rounded-full animate-fadeIn" />
-                )}
-              </button>
-
-              <button
-                onClick={() => setTabFilter("parent")}
-                className={`text-sm font-extrabold pb-2 relative transition-all cursor-pointer ${tabFilter === "parent"
-                  ? "text-[var(--primary)]"
-                  : "text-gray-500 hover:text-gray-800"
-                  }`}
-              >
-                <span>Parent Data</span>
-                {tabFilter === "parent" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--primary)] rounded-full animate-fadeIn" />
-                )}
-              </button>
-
-              <button
-                onClick={() => setTabFilter("student")}
-                className={`text-sm font-extrabold pb-2 relative transition-all cursor-pointer ${tabFilter === "student"
-                  ? "text-[var(--primary)]"
-                  : "text-gray-500 hover:text-gray-800"
-                  }`}
-              >
-                <span>Student Data</span>
-                {tabFilter === "student" && (
-                  <span className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--primary)] rounded-full animate-fadeIn" />
-                )}
-              </button>
-            </div>
-
-            {/* 4 Summary Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
-              {/* Card 1: Total Submissions */}
-              <div className="p-5 rounded-2xl bg-[#fdf8f4] border border-[#f5e6d6] flex items-center gap-4 hover:shadow-md transition-shadow">
-                <div className="w-13 h-13 rounded-2xl bg-red-100/70 text-[var(--primary)] flex items-center justify-center shrink-0">
-                  <FaTableCells className="text-xl" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500">Total Submissions</p>
-                  <h3 className="text-2xl font-black text-gray-900 mt-0.5 tracking-tight">
-                    {currentDataset.length.toLocaleString()}
-                  </h3>
-                </div>
-              </div>
-
-              {/* Card 2: Parent Submissions */}
-              <div className="p-5 rounded-2xl bg-[#fdf8f4] border border-[#f5e6d6] flex items-center gap-4 hover:shadow-md transition-shadow">
-                <div className="w-13 h-13 rounded-2xl bg-orange-100/70 text-orange-600 flex items-center justify-center shrink-0">
-                  <FaUserGroup className="text-xl" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500">Parent Submissions</p>
-                  <h3 className="text-2xl font-black text-gray-900 mt-0.5 tracking-tight">
-                    {currentDataset.filter((item) => item.type.toLowerCase() === "parent").length.toLocaleString()}
-                  </h3>
-                </div>
-              </div>
-
-              {/* Card 3: Student Submissions */}
-              <div className="p-5 rounded-2xl bg-[#fdf8f4] border border-[#f5e6d6] flex items-center gap-4 hover:shadow-md transition-shadow">
-                <div className="w-13 h-13 rounded-2xl bg-emerald-100/70 text-emerald-600 flex items-center justify-center shrink-0">
-                  <FaGraduationCap className="text-xl" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500">Student Submissions</p>
-                  <h3 className="text-2xl font-black text-gray-900 mt-0.5 tracking-tight">
-                    {currentDataset.filter((item) => item.type.toLowerCase() === "student").length.toLocaleString()}
-                  </h3>
-                </div>
-              </div>
-
-              {/* Card 4: Today's Submissions */}
-              <div className="p-5 rounded-2xl bg-[#fdf8f4] border border-[#f5e6d6] flex items-center gap-4 hover:shadow-md transition-shadow">
-                <div className="w-13 h-13 rounded-2xl bg-purple-100/70 text-purple-600 flex items-center justify-center shrink-0">
-                  <FaCalendarCheck className="text-xl" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-gray-500">Today's Submissions</p>
-                  <h3 className="text-2xl font-black text-gray-900 mt-0.5 tracking-tight">
-                    {currentDataset.filter((item) => {
-                      if (!item.submittedOn) return false;
-                      const itemDate = new Date(item.submittedOn.replace(",", ""));
-                      return !isNaN(itemDate.getTime()) && itemDate.toDateString() === new Date().toDateString();
-                    }).length.toLocaleString()}
-                  </h3>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* =========================================================
-              FILTERS ROW (Custom Date Range, State, City, School)
-             ========================================================= */}
-          <div className="bg-white rounded-3xl px-5 py-4 shadow-xs border border-gray-200/80">
-            <div className="flex flex-wrap items-end gap-3">
-              {/* Date Range Dropdown (Matching Ref Screenshot 3) */}
-              <div className="min-w-[180px] flex-1 relative custom-dropdown-container">
-                <label className="block text-[11px] font-bold text-gray-500 mb-1">Date Range</label>
-                <button
-                  type="button"
-                  onClick={() => setOpenDropdown(openDropdown === "date" ? "none" : "date")}
-                  className={`w-full px-3.5 py-2 bg-gray-50 border rounded-xl text-xs font-bold text-gray-800 flex items-center justify-between transition-all cursor-pointer ${openDropdown === "date"
-                    ? "border-[var(--primary)] bg-white ring-2 ring-red-100 shadow-xs"
-                    : "border-gray-200 hover:bg-white hover:border-gray-300"
-                    }`}
-                >
-                  <div className="flex items-center gap-2 truncate">
-                    <FaRegCalendar className="text-gray-500 text-xs shrink-0" />
-                    <span className="truncate">{dateRangeLabel}</span>
-                  </div>
-                  {openDropdown === "date" ? (
-                    <FaChevronUp className="text-[10px] text-gray-500 shrink-0 ml-1" />
-                  ) : (
-                    <FaChevronDown className="text-[10px] text-gray-400 shrink-0 ml-1" />
-                  )}
-                </button>
-
-                {/* Date Presets Popover Menu (Screenshot 3) */}
-                {openDropdown === "date" && (
-                  <div className="absolute top-full left-0 mt-1 z-40 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 animate-fadeIn text-xs font-semibold">
-                    {datePresets.map((preset) => {
-                      const isSelected = datePreset === preset.id;
-                      return (
-                        <div
-                          key={preset.id}
-                          onClick={() => handleSelectDatePreset(preset)}
-                          className={`px-4 py-2.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected
-                            ? "bg-blue-50/70 text-blue-600 font-bold"
-                            : "hover:bg-gray-50 text-gray-700"
-                            }`}
-                        >
-                          <span>{preset.label}</span>
-                          {isSelected && <FaCheck className="text-blue-600 text-xs" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* State Filter (Custom UI) */}
-              <div className="min-w-[140px] flex-1 relative custom-dropdown-container">
-                <label className="block text-[11px] font-bold text-gray-500 mb-1">State</label>
-                <button
-                  type="button"
-                  onClick={() => setOpenDropdown(openDropdown === "state" ? "none" : "state")}
-                  className={`w-full px-3 py-2 bg-gray-50 border rounded-xl text-xs font-bold text-gray-800 flex items-center justify-between transition-all cursor-pointer ${openDropdown === "state"
-                    ? "border-[var(--primary)] bg-white ring-2 ring-red-100 shadow-xs"
-                    : "border-gray-200 hover:bg-white hover:border-gray-300"
-                    }`}
-                >
-                  <span className="truncate">
-                    {stateOptions.find((o) => o.value === stateFilter)?.label || "All States"}
-                  </span>
-                  {openDropdown === "state" ? (
-                    <FaChevronUp className="text-[10px] text-gray-500 shrink-0 ml-1" />
-                  ) : (
-                    <FaChevronDown className="text-[10px] text-gray-400 shrink-0 ml-1" />
-                  )}
-                </button>
-
-                {openDropdown === "state" && (
-                  <div className="absolute top-full left-0 mt-1 z-40 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 max-h-56 overflow-y-auto thin-scrollbar animate-fadeIn text-xs font-semibold">
-                    {stateOptions.map((opt) => {
-                      const isSelected = stateFilter === opt.value;
-                      return (
-                        <div
-                          key={opt.value}
-                          onClick={() => {
-                            setStateFilter(opt.value);
-                            setOpenDropdown("none");
-                          }}
-                          className={`px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected
-                            ? "bg-red-50 text-[var(--primary)] font-bold"
-                            : "hover:bg-gray-50 text-gray-700"
-                            }`}
-                        >
-                          <span className="truncate">{opt.label}</span>
-                          {isSelected && <FaCheck className="text-[var(--primary)] text-xs shrink-0" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* City Filter (Custom UI) */}
-              <div className="min-w-[130px] flex-1 relative custom-dropdown-container">
-                <label className="block text-[11px] font-bold text-gray-500 mb-1">City</label>
-                <button
-                  type="button"
-                  onClick={() => setOpenDropdown(openDropdown === "city" ? "none" : "city")}
-                  className={`w-full px-3 py-2 bg-gray-50 border rounded-xl text-xs font-bold text-gray-800 flex items-center justify-between transition-all cursor-pointer ${openDropdown === "city"
-                    ? "border-[var(--primary)] bg-white ring-2 ring-red-100 shadow-xs"
-                    : "border-gray-200 hover:bg-white hover:border-gray-300"
-                    }`}
-                >
-                  <span className="truncate">
-                    {cityOptions.find((o) => o.value === cityFilter)?.label || "All Cities"}
-                  </span>
-                  {openDropdown === "city" ? (
-                    <FaChevronUp className="text-[10px] text-gray-500 shrink-0 ml-1" />
-                  ) : (
-                    <FaChevronDown className="text-[10px] text-gray-400 shrink-0 ml-1" />
-                  )}
-                </button>
-
-                {openDropdown === "city" && (
-                  <div className="absolute top-full left-0 mt-1 z-40 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 max-h-56 overflow-y-auto thin-scrollbar animate-fadeIn text-xs font-semibold">
-                    {cityOptions.map((opt) => {
-                      const isSelected = cityFilter === opt.value;
-                      return (
-                        <div
-                          key={opt.value}
-                          onClick={() => {
-                            setCityFilter(opt.value);
-                            setOpenDropdown("none");
-                          }}
-                          className={`px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected
-                            ? "bg-red-50 text-[var(--primary)] font-bold"
-                            : "hover:bg-gray-50 text-gray-700"
-                            }`}
-                        >
-                          <span className="truncate">{opt.label}</span>
-                          {isSelected && <FaCheck className="text-[var(--primary)] text-xs shrink-0" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* School Filter (Custom UI) */}
-              <div className="min-w-[140px] flex-1 relative custom-dropdown-container">
-                <label className="block text-[11px] font-bold text-gray-500 mb-1">School</label>
-                <button
-                  type="button"
-                  onClick={() => setOpenDropdown(openDropdown === "school" ? "none" : "school")}
-                  className={`w-full px-3 py-2 bg-gray-50 border rounded-xl text-xs font-bold text-gray-800 flex items-center justify-between transition-all cursor-pointer ${openDropdown === "school"
-                    ? "border-[var(--primary)] bg-white ring-2 ring-red-100 shadow-xs"
-                    : "border-gray-200 hover:bg-white hover:border-gray-300"
-                    }`}
-                >
-                  <span className="truncate">
-                    {schoolOptions.find((o) => o.value === schoolFilter)?.label || "All Schools"}
-                  </span>
-                  {openDropdown === "school" ? (
-                    <FaChevronUp className="text-[10px] text-gray-500 shrink-0 ml-1" />
-                  ) : (
-                    <FaChevronDown className="text-[10px] text-gray-400 shrink-0 ml-1" />
-                  )}
-                </button>
-
-                {openDropdown === "school" && (
-                  <div className="absolute top-full left-0 mt-1 z-40 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 max-h-56 overflow-y-auto thin-scrollbar animate-fadeIn text-xs font-semibold">
-                    {schoolOptions.map((opt) => {
-                      const isSelected = schoolFilter === opt.value;
-                      return (
-                        <div
-                          key={opt.value}
-                          onClick={() => {
-                            setSchoolFilter(opt.value);
-                            setOpenDropdown("none");
-                          }}
-                          className={`px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected
-                            ? "bg-red-50 text-[var(--primary)] font-bold"
-                            : "hover:bg-gray-50 text-gray-700"
-                            }`}
-                        >
-                          <span className="truncate">{opt.label}</span>
-                          {isSelected && <FaCheck className="text-[var(--primary)] text-xs shrink-0" />}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Reset & Apply Buttons */}
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={resetFilters}
-                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition-all cursor-pointer"
-                >
-                  Reset
-                </button>
-                <button className="px-5 py-2 rounded-xl bg-[var(--primary)] hover:bg-red-700 text-white text-xs font-extrabold transition-all shadow-md cursor-pointer whitespace-nowrap">
-                  Apply Filter
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* =========================================================
-              SURVEY DATA TABLE (Matching Ref UI Image #2)
-             ========================================================= */}
-          <div className="bg-white rounded-3xl p-6 shadow-xs border border-gray-200/80 space-y-4">
-            {/* Table Header Tools */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              {/* Search Bar */}
-              <div className="relative w-full sm:w-80">
-                <FaMagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by name, mobile, school..."
-                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-semibold text-gray-800 focus:outline-none focus:border-[var(--primary)] focus:bg-white"
-                />
-              </div>
-
-              {/* Show Entries Selector (Custom UI) */}
-              <div className="flex items-center gap-2 text-xs font-bold text-gray-600 self-end sm:self-auto relative custom-dropdown-container">
-                <span>Show</span>
-                <div className="relative">
+              {/* Filter Sub-Tabs: All Data / Parent Data / Student Data */}
+              <div className="bg-white rounded-3xl p-6 shadow-xs border border-gray-200/80">
+                <div className="flex items-center gap-8 border-b border-gray-100 pb-4 mb-6">
                   <button
-                    type="button"
-                    onClick={() => setOpenDropdown(openDropdown === "entries" ? "none" : "entries")}
-                    className={`px-3 py-1.5 bg-gray-50 border rounded-xl text-xs font-bold text-gray-800 flex items-center justify-between gap-2 transition-all cursor-pointer ${openDropdown === "entries"
-                      ? "border-[var(--primary)] bg-white ring-2 ring-red-100 shadow-xs"
-                      : "border-gray-200 hover:bg-white hover:border-gray-300"
+                    onClick={() => setTabFilter("all")}
+                    className={`text-sm font-extrabold pb-2 relative transition-all cursor-pointer ${tabFilter === "all"
+                      ? "text-[var(--primary)]"
+                      : "text-gray-500 hover:text-gray-800"
                       }`}
                   >
-                    <span>{itemsPerPage}</span>
-                    {openDropdown === "entries" ? (
-                      <FaChevronUp className="text-[10px] text-gray-500" />
-                    ) : (
-                      <FaChevronDown className="text-[10px] text-gray-400" />
+                    <span>All Data</span>
+                    {tabFilter === "all" && (
+                      <span className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--primary)] rounded-full animate-fadeIn" />
                     )}
                   </button>
 
-                  {openDropdown === "entries" && (
-                    <div className="absolute right-0 top-full mt-1 z-40 w-24 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 animate-fadeIn text-xs font-semibold">
-                      {[10, 25, 50, 100].map((num) => {
-                        const isSelected = itemsPerPage === num;
-                        return (
-                          <div
-                            key={num}
-                            onClick={() => {
-                              setItemsPerPage(num);
-                              setCurrentPage(1);
-                              setOpenDropdown("none");
-                            }}
-                            className={`px-3.5 py-2 flex items-center justify-between cursor-pointer transition-colors ${isSelected
-                              ? "bg-red-50 text-[var(--primary)] font-bold"
-                              : "hover:bg-gray-50 text-gray-700"
-                              }`}
-                          >
-                            <span>{num}</span>
-                            {isSelected && <FaCheck className="text-[var(--primary)] text-xs" />}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-                <span>entries</span>
-              </div>
-            </div>
+                  <button
+                    onClick={() => setTabFilter("parent")}
+                    className={`text-sm font-extrabold pb-2 relative transition-all cursor-pointer ${tabFilter === "parent"
+                      ? "text-[var(--primary)]"
+                      : "text-gray-500 hover:text-gray-800"
+                      }`}
+                  >
+                    <span>Parent Data</span>
+                    {tabFilter === "parent" && (
+                      <span className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--primary)] rounded-full animate-fadeIn" />
+                    )}
+                  </button>
 
-            {/* Data Table Container — thin scrollbar at bottom */}
-            <div className="w-full rounded-2xl border border-gray-200/80 bg-white overflow-x-auto thin-scrollbar shadow-2xs">
-              <table className="w-full min-w-[1200px] text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-50/80 border-b border-gray-200 text-[9.5px] font-black text-gray-500 uppercase tracking-wider">
-                    <th className="py-2.5 pl-3 pr-1 text-center w-[32px]">
-                      <input
-                        type="checkbox"
-                        checked={isAllSelected}
-                        onChange={handleSelectAll}
-                        className="rounded text-[var(--primary)] accent-[var(--primary)] cursor-pointer"
-                      />
-                    </th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">ID<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">आईडी</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">First Name<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">पहला नाम</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">Last Name<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">अंतिम नाम</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">Email<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">ईमेल</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">Mobile<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">मोबाइल</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">DOB<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">जन्म तिथि</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">Gender<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">लिंग</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">Type<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">प्रकार</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">Occupation<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">व्यवसाय</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">Class<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">कक्षा</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">State<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">राज्य</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">City<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">शहर</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">School<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">विद्यालय</span></th>
-                    <th className="py-2.5 px-2 whitespace-nowrap">Submitted On<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">जमा दिनांक</span></th>
-                    <th className="py-2.5 pr-3 pl-1 text-center w-[42px] whitespace-nowrap">Action<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">कार्रवाई</span></th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 text-[11px] font-semibold text-gray-700">
-                  {paginatedData.length === 0 ? (
-                    <tr>
-                      <td colSpan={16} className="py-8 text-center text-gray-400">
-                        No submissions match the active filter criteria.
-                      </td>
-                    </tr>
-                  ) : (
-                    paginatedData.map((row) => {
-                      const isRowSelected = selectedRows.includes(row.id);
-                      return (
-                        <tr
-                          key={row.id}
-                          className={`transition-colors ${isRowSelected ? "bg-red-50/70" : "hover:bg-red-50/30"
-                            }`}
-                        >
-                          <td className="py-2.5 pl-3 pr-1 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isRowSelected}
-                              onChange={() => handleToggleRow(row.id)}
-                              className="rounded text-[var(--primary)] accent-[var(--primary)] cursor-pointer"
-                            />
-                          </td>
-                          <td className="py-2.5 px-2 font-mono text-gray-500 text-[10.5px] whitespace-nowrap">{row.id}</td>
-                          <td className="py-2.5 px-2 font-bold text-gray-900 whitespace-nowrap">{row.firstName}</td>
-                          <td className="py-2.5 px-2 whitespace-nowrap">{row.lastName}</td>
-                          <td className="py-2.5 px-2 text-gray-600 text-[10.5px] whitespace-nowrap">{row.email}</td>
-                          <td className="py-2.5 px-2 text-gray-600 font-mono text-[10.5px] whitespace-nowrap">{row.mobile}</td>
-                          <td className="py-2.5 px-2 text-gray-600 text-[10.5px] whitespace-nowrap">{row.dob}</td>
-                          <td className="py-2.5 px-2 whitespace-nowrap">{row.gender}</td>
-                          <td className="py-2.5 px-2">
-                            <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase inline-block whitespace-nowrap ${row.type === "Student"
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : "bg-orange-50 text-orange-700 border border-orange-200"
-                              }`}>
-                              {row.type}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-2 whitespace-nowrap">{row.occupation}</td>
-                          <td className="py-2.5 px-2 text-center whitespace-nowrap">{row.studentClass}</td>
-                          <td className="py-2.5 px-2 whitespace-nowrap">{row.state}</td>
-                          <td className="py-2.5 px-2 whitespace-nowrap">{row.city}</td>
-                          <td className="py-2.5 px-2 whitespace-nowrap max-w-[160px] truncate" title={row.school}>{row.school}</td>
-                          <td className="py-2.5 px-2 text-gray-500 text-[10px] whitespace-nowrap">{row.submittedOn}</td>
-                          <td className="py-2.5 pr-3 pl-1 text-center">
-                            <button
-                              onClick={() => setSelectedSubmission(row)}
-                              className="p-1 text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
-                              title="View Details"
+                  <button
+                    onClick={() => setTabFilter("student")}
+                    className={`text-sm font-extrabold pb-2 relative transition-all cursor-pointer ${tabFilter === "student"
+                      ? "text-[var(--primary)]"
+                      : "text-gray-500 hover:text-gray-800"
+                      }`}
+                  >
+                    <span>Student Data</span>
+                    {tabFilter === "student" && (
+                      <span className="absolute bottom-0 left-0 right-0 h-1 bg-[var(--primary)] rounded-full animate-fadeIn" />
+                    )}
+                  </button>
+                </div>
+
+                {/* 4 Summary Stats Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
+                  {/* Card 1: Total Submissions */}
+                  <div className="p-5 rounded-2xl bg-[#fdf8f4] border border-[#f5e6d6] flex items-center gap-4 hover:shadow-md transition-shadow">
+                    <div className="w-13 h-13 rounded-2xl bg-red-100/70 text-[var(--primary)] flex items-center justify-center shrink-0">
+                      <FaTableCells className="text-xl" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-500">Total Submissions</p>
+                      <h3 className="text-2xl font-black text-gray-900 mt-0.5 tracking-tight">
+                        {currentDataset.length.toLocaleString()}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Parent Submissions */}
+                  <div className="p-5 rounded-2xl bg-[#fdf8f4] border border-[#f5e6d6] flex items-center gap-4 hover:shadow-md transition-shadow">
+                    <div className="w-13 h-13 rounded-2xl bg-orange-100/70 text-orange-600 flex items-center justify-center shrink-0">
+                      <FaUserGroup className="text-xl" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-500">Parent Submissions</p>
+                      <h3 className="text-2xl font-black text-gray-900 mt-0.5 tracking-tight">
+                        {currentDataset.filter((item) => item.type.toLowerCase() === "parent").length.toLocaleString()}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Student Submissions */}
+                  <div className="p-5 rounded-2xl bg-[#fdf8f4] border border-[#f5e6d6] flex items-center gap-4 hover:shadow-md transition-shadow">
+                    <div className="w-13 h-13 rounded-2xl bg-emerald-100/70 text-emerald-600 flex items-center justify-center shrink-0">
+                      <FaGraduationCap className="text-xl" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-500">Student Submissions</p>
+                      <h3 className="text-2xl font-black text-gray-900 mt-0.5 tracking-tight">
+                        {currentDataset.filter((item) => item.type.toLowerCase() === "student").length.toLocaleString()}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Card 4: Today's Submissions */}
+                  <div className="p-5 rounded-2xl bg-[#fdf8f4] border border-[#f5e6d6] flex items-center gap-4 hover:shadow-md transition-shadow">
+                    <div className="w-13 h-13 rounded-2xl bg-purple-100/70 text-purple-600 flex items-center justify-center shrink-0">
+                      <FaCalendarCheck className="text-xl" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-500">Today's Submissions</p>
+                      <h3 className="text-2xl font-black text-gray-900 mt-0.5 tracking-tight">
+                        {currentDataset.filter((item) => {
+                          if (!item.submittedOn) return false;
+                          const itemDate = new Date(item.submittedOn.replace(",", ""));
+                          return !isNaN(itemDate.getTime()) && itemDate.toDateString() === new Date().toDateString();
+                        }).length.toLocaleString()}
+                      </h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* =========================================================
+                  FILTERS ROW (Custom Date Range, State, City, School)
+                 ========================================================= */}
+              <div className="bg-white rounded-3xl px-5 py-4 shadow-xs border border-gray-200/80">
+                <div className="flex flex-wrap items-end gap-3">
+                  {/* Date Range Dropdown (Matching Ref Screenshot 3) */}
+                  <div className="min-w-[180px] flex-1 relative custom-dropdown-container">
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">Date Range</label>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(openDropdown === "date" ? "none" : "date")}
+                      className={`w-full px-3.5 py-2 bg-gray-50 border rounded-xl text-xs font-bold text-gray-800 flex items-center justify-between transition-all cursor-pointer ${openDropdown === "date"
+                        ? "border-[var(--primary)] bg-white ring-2 ring-red-100 shadow-xs"
+                        : "border-gray-200 hover:bg-white hover:border-gray-300"
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <FaRegCalendar className="text-gray-500 text-xs shrink-0" />
+                        <span className="truncate">{dateRangeLabel}</span>
+                      </div>
+                      {openDropdown === "date" ? (
+                        <FaChevronUp className="text-[10px] text-gray-500 shrink-0 ml-1" />
+                      ) : (
+                        <FaChevronDown className="text-[10px] text-gray-400 shrink-0 ml-1" />
+                      )}
+                    </button>
+
+                    {/* Date Presets Popover Menu (Screenshot 3) */}
+                    {openDropdown === "date" && (
+                      <div className="absolute top-full left-0 mt-1 z-40 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 animate-fadeIn text-xs font-semibold">
+                        {datePresets.map((preset) => {
+                          const isSelected = datePreset === preset.id;
+                          return (
+                            <div
+                              key={preset.id}
+                              onClick={() => handleSelectDatePreset(preset)}
+                              className={`px-4 py-2.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected
+                                ? "bg-blue-50/70 text-blue-600 font-bold"
+                                : "hover:bg-gray-50 text-gray-700"
+                                }`}
                             >
-                              <FaEye className="text-xs" />
-                            </button>
+                              <span>{preset.label}</span>
+                              {isSelected && <FaCheck className="text-blue-600 text-xs" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* State Filter (Custom UI) */}
+                  <div className="min-w-[140px] flex-1 relative custom-dropdown-container">
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">State</label>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDropdown(openDropdown === "state" ? "none" : "state")}
+                      className={`w-full px-3 py-2 bg-gray-50 border rounded-xl text-xs font-bold text-gray-800 flex items-center justify-between transition-all cursor-pointer ${openDropdown === "state"
+                        ? "border-[var(--primary)] bg-white ring-2 ring-red-100 shadow-xs"
+                        : "border-gray-200 hover:bg-white hover:border-gray-300"
+                        }`}
+                    >
+                      <span className="truncate">
+                        {stateOptions.find((o) => o.value === stateFilter)?.label || "All States"}
+                      </span>
+                      {openDropdown === "state" ? (
+                        <FaChevronUp className="text-[10px] text-gray-500 shrink-0 ml-1" />
+                      ) : (
+                        <FaChevronDown className="text-[10px] text-gray-400 shrink-0 ml-1" />
+                      )}
+                    </button>
+
+                    {openDropdown === "state" && (
+                      <div className="absolute top-full left-0 mt-1 z-40 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 max-h-56 overflow-y-auto thin-scrollbar animate-fadeIn text-xs font-semibold">
+                        {stateOptions.map((opt) => {
+                          const isSelected = stateFilter === opt.value;
+                          return (
+                            <div
+                              key={opt.value}
+                              onClick={() => {
+                                setStateFilter(opt.value);
+                                setCityFilter("all");
+                                setSchoolFilter("all");
+                                setOpenDropdown("none");
+                              }}
+                              className={`px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected
+                                ? "bg-red-50 text-[var(--primary)] font-bold"
+                                : "hover:bg-gray-50 text-gray-700"
+                                }`}
+                            >
+                              <span className="truncate">{opt.label}</span>
+                              {isSelected && <FaCheck className="text-[var(--primary)] text-xs shrink-0" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* City Filter (Custom UI) */}
+                  <div className="min-w-[130px] flex-1 relative custom-dropdown-container">
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">City</label>
+                    <button
+                      type="button"
+                      disabled={!stateFilter || stateFilter === "all"}
+                      onClick={() => stateFilter && stateFilter !== "all" && setOpenDropdown(openDropdown === "city" ? "none" : "city")}
+                      className={`w-full px-3 py-2 border rounded-xl text-xs font-bold flex items-center justify-between transition-all ${!stateFilter || stateFilter === "all"
+                        ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-75"
+                        : openDropdown === "city"
+                          ? "border-[var(--primary)] bg-white ring-2 ring-red-100 shadow-xs cursor-pointer text-gray-800"
+                          : "bg-gray-50 border-gray-200 hover:bg-white hover:border-gray-300 cursor-pointer text-gray-800"
+                        }`}
+                    >
+                      <span className="truncate">
+                        {cityOptions.find((o) => o.value === cityFilter)?.label || "All Cities"}
+                      </span>
+                      {openDropdown === "city" ? (
+                        <FaChevronUp className="text-[10px] text-gray-500 shrink-0 ml-1" />
+                      ) : (
+                        <FaChevronDown className="text-[10px] text-gray-400 shrink-0 ml-1" />
+                      )}
+                    </button>
+
+                    {openDropdown === "city" && stateFilter && stateFilter !== "all" && (
+                      <div className="absolute top-full left-0 mt-1 z-40 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 max-h-56 overflow-y-auto thin-scrollbar animate-fadeIn text-xs font-semibold">
+                        {cityOptions.map((opt) => {
+                          const isSelected = cityFilter === opt.value;
+                          return (
+                            <div
+                              key={opt.value}
+                              onClick={() => {
+                                setCityFilter(opt.value);
+                                setSchoolFilter("all");
+                                setOpenDropdown("none");
+                              }}
+                              className={`px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected
+                                ? "bg-red-50 text-[var(--primary)] font-bold"
+                                : "hover:bg-gray-50 text-gray-700"
+                                }`}
+                            >
+                              <span className="truncate">{opt.label}</span>
+                              {isSelected && <FaCheck className="text-[var(--primary)] text-xs shrink-0" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* School Filter (Custom UI) */}
+                  <div className="min-w-[140px] flex-1 relative custom-dropdown-container">
+                    <label className="block text-[11px] font-bold text-gray-500 mb-1">School</label>
+                    <button
+                      type="button"
+                      disabled={!cityFilter || cityFilter === "all"}
+                      onClick={() => cityFilter && cityFilter !== "all" && setOpenDropdown(openDropdown === "school" ? "none" : "school")}
+                      className={`w-full px-3 py-2 border rounded-xl text-xs font-bold flex items-center justify-between transition-all ${!cityFilter || cityFilter === "all"
+                        ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-75"
+                        : openDropdown === "school"
+                          ? "border-[var(--primary)] bg-white ring-2 ring-red-100 shadow-xs cursor-pointer text-gray-800"
+                          : "bg-gray-50 border-gray-200 hover:bg-white hover:border-gray-300 cursor-pointer text-gray-800"
+                        }`}
+                    >
+                      <span className="truncate">
+                        {schoolOptions.find((o) => o.value === schoolFilter)?.label || "All Schools"}
+                      </span>
+                      {openDropdown === "school" ? (
+                        <FaChevronUp className="text-[10px] text-gray-500 shrink-0 ml-1" />
+                      ) : (
+                        <FaChevronDown className="text-[10px] text-gray-400 shrink-0 ml-1" />
+                      )}
+                    </button>
+
+                    {openDropdown === "school" && cityFilter && cityFilter !== "all" && (
+                      <div className="absolute top-full left-0 mt-1 z-40 w-64 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 max-h-56 overflow-y-auto thin-scrollbar animate-fadeIn text-xs font-semibold">
+                        {schoolOptions.map((opt) => {
+                          const isSelected = schoolFilter === opt.value;
+                          return (
+                            <div
+                              key={opt.value}
+                              onClick={() => {
+                                setSchoolFilter(opt.value);
+                                setOpenDropdown("none");
+                              }}
+                              className={`px-3.5 py-2.5 flex items-center justify-between cursor-pointer transition-colors ${isSelected
+                                ? "bg-red-50 text-[var(--primary)] font-bold"
+                                : "hover:bg-gray-50 text-gray-700"
+                                }`}
+                            >
+                              <span className="truncate">{opt.label}</span>
+                              {isSelected && <FaCheck className="text-[var(--primary)] text-xs shrink-0" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Reset & Apply Buttons */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={resetFilters}
+                      className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-xs font-bold text-gray-700 transition-all cursor-pointer"
+                    >
+                      Reset
+                    </button>
+                    <button className="px-5 py-2 rounded-xl bg-[var(--primary)] hover:bg-red-700 text-white text-xs font-extrabold transition-all shadow-md cursor-pointer whitespace-nowrap">
+                      Apply Filter
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* =========================================================
+                  SURVEY DATA TABLE (Matching Ref UI Image #2)
+                 ========================================================= */}
+              <div className="bg-white rounded-3xl p-6 shadow-xs border border-gray-200/80 space-y-4">
+                {/* Table Header Tools */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                  {/* Search Bar (Global Search Box) */}
+                  <div className="relative w-full sm:w-96">
+                    <FaMagnifyingGlass className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Global Search (ID, Name, Mobile, Email, State, City, School, Type, Gender...)"
+                      className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-2xl text-xs font-semibold text-gray-800 focus:outline-none focus:border-[var(--primary)] focus:bg-white transition-all shadow-xs"
+                    />
+                  </div>
+
+                  {/* Show Entries Selector (Custom UI) */}
+                  <div className="flex items-center gap-2 text-xs font-bold text-gray-600 self-end sm:self-auto relative custom-dropdown-container">
+                    <span>Show</span>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setOpenDropdown(openDropdown === "entries" ? "none" : "entries")}
+                        className={`px-3 py-1.5 bg-gray-50 border rounded-xl text-xs font-bold text-gray-800 flex items-center justify-between gap-2 transition-all cursor-pointer ${openDropdown === "entries"
+                          ? "border-[var(--primary)] bg-white ring-2 ring-red-100 shadow-xs"
+                          : "border-gray-200 hover:bg-white hover:border-gray-300"
+                          }`}
+                      >
+                        <span>{itemsPerPage}</span>
+                        {openDropdown === "entries" ? (
+                          <FaChevronUp className="text-[10px] text-gray-500" />
+                        ) : (
+                          <FaChevronDown className="text-[10px] text-gray-400" />
+                        )}
+                      </button>
+
+                      {openDropdown === "entries" && (
+                        <div className="absolute right-0 top-full mt-1 z-40 w-24 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 animate-fadeIn text-xs font-semibold">
+                          {[10, 25, 50, 100].map((num) => {
+                            const isSelected = itemsPerPage === num;
+                            return (
+                              <div
+                                key={num}
+                                onClick={() => {
+                                  setItemsPerPage(num);
+                                  setCurrentPage(1);
+                                  setOpenDropdown("none");
+                                }}
+                                className={`px-3.5 py-2 flex items-center justify-between cursor-pointer transition-colors ${isSelected
+                                  ? "bg-red-50 text-[var(--primary)] font-bold"
+                                  : "hover:bg-gray-50 text-gray-700"
+                                  }`}
+                              >
+                                <span>{num}</span>
+                                {isSelected && <FaCheck className="text-[var(--primary)] text-xs" />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <span>entries</span>
+                  </div>
+                </div>
+
+                {/* Data Table Container — thin scrollbar at bottom */}
+                <div className="w-full rounded-2xl border border-gray-200/80 bg-white overflow-x-auto thin-scrollbar shadow-2xs">
+                  <table className="w-full min-w-[1200px] text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-gray-50/80 border-b border-gray-200 text-[9.5px] font-black text-gray-500 uppercase tracking-wider">
+                        <th className="py-2.5 pl-3 pr-1 text-center w-[32px]">
+                          <input
+                            type="checkbox"
+                            checked={isAllSelected}
+                            onChange={handleSelectAll}
+                            className="rounded text-[var(--primary)] accent-[var(--primary)] cursor-pointer"
+                          />
+                        </th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">ID<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">आईडी</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">First Name<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">पहला नाम</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">Last Name<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">अंतिम नाम</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">Email<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">ईमेल</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">Mobile<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">मोबाइल</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">DOB<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">जन्म तिथि</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">Gender<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">लिंग</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">Type<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">प्रकार</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">Occupation<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">व्यवसाय</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">Class<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">कक्षा</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">State<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">राज्य</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">City<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">शहर</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">School<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">विद्यालय</span></th>
+                        <th className="py-2.5 px-2 whitespace-nowrap">Submitted On<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">जमा दिनांक</span></th>
+                        <th className="py-2.5 pr-3 pl-1 text-center w-[42px] whitespace-nowrap">Action<br /><span className="text-[7.5px] text-gray-400 font-normal normal-case">कार्रवाई</span></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-[11px] font-semibold text-gray-700">
+                      {paginatedData.length === 0 ? (
+                        <tr>
+                          <td colSpan={16} className="py-8 text-center text-gray-400">
+                            No submissions match the active filter criteria.
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+                      ) : (
+                        paginatedData.map((row) => {
+                          const isRowSelected = selectedRows.includes(row.id);
+                          return (
+                            <tr
+                              key={row.id}
+                              className={`transition-colors ${
+                                isRowSelected ? "bg-red-50/70" : "hover:bg-red-50/30"
+                              }`}
+                            >
+                              <td className="py-2.5 pl-3 pr-1 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isRowSelected}
+                                  onChange={() => handleToggleRow(row.id)}
+                                  className="rounded text-[var(--primary)] accent-[var(--primary)] cursor-pointer"
+                                />
+                              </td>
+                              <td className="py-2.5 px-2 font-mono text-gray-500 text-[10.5px] whitespace-nowrap">{row.id}</td>
+                              <td className="py-2.5 px-2 font-bold text-gray-900 whitespace-nowrap">{row.firstName}</td>
+                              <td className="py-2.5 px-2 whitespace-nowrap">{row.lastName}</td>
+                              <td className="py-2.5 px-2 text-gray-600 text-[10.5px] whitespace-nowrap">{row.email}</td>
+                              <td className="py-2.5 px-2 text-gray-600 font-mono text-[10.5px] whitespace-nowrap">{row.mobile}</td>
+                              <td className="py-2.5 px-2 text-gray-600 text-[10.5px] whitespace-nowrap">{row.dob}</td>
+                              <td className="py-2.5 px-2 whitespace-nowrap">{row.gender}</td>
+                              <td className="py-2.5 px-2">
+                                <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase inline-block whitespace-nowrap ${
+                                  row.type === "Student"
+                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                    : "bg-orange-50 text-orange-700 border border-orange-200"
+                                }`}>
+                                  {row.type}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-2 whitespace-nowrap">{row.occupation}</td>
+                              <td className="py-2.5 px-2 text-center whitespace-nowrap">{row.studentClass}</td>
+                              <td className="py-2.5 px-2 whitespace-nowrap">{row.state}</td>
+                              <td className="py-2.5 px-2 whitespace-nowrap">{row.city}</td>
+                              <td className="py-2.5 px-2 whitespace-nowrap max-w-[160px] truncate" title={row.school}>{row.school}</td>
+                              <td className="py-2.5 px-2 text-gray-500 text-[10px] whitespace-nowrap">{row.submittedOn}</td>
+                              <td className="py-2.5 pr-3 pl-1 text-center">
+                                <button
+                                  onClick={() => setSelectedSubmission(row)}
+                                  className="p-1 text-red-500 hover:bg-red-50 rounded-md transition-colors cursor-pointer"
+                                  title="View Details"
+                                >
+                                  <FaEye className="text-xs" />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
 
-            {/* Pagination Controls */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 text-xs text-gray-500 font-semibold">
-              <div>
-                Showing {startItemDisplay} to {endItemDisplay} of {totalItems.toLocaleString()} entries
+                {/* Pagination Controls */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-3 text-xs text-gray-500 font-semibold">
+                  <div>
+                    Showing {startItemDisplay} to {endItemDisplay} of {totalItems.toLocaleString()} entries
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={validPage === 1}
+                      className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      <FaChevronLeft className="text-xs" />
+                    </button>
+
+                    {renderPaginationButtons()}
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={validPage === totalPages}
+                      className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                    >
+                      <FaChevronRight className="text-xs" />
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  disabled={validPage === 1}
-                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                >
-                  <FaChevronLeft className="text-xs" />
-                </button>
-
-                {renderPaginationButtons()}
-
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={validPage === totalPages}
-                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                >
-                  <FaChevronRight className="text-xs" />
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -1444,109 +1431,6 @@ export default function AdminDashboardPage() {
                 </div>
               );
             })()}
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================
-          SUBMISSION DETAILS MODAL (Eye Icon Click)
-         ========================================================= */}
-      {selectedSubmission && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 sm:p-8 shadow-2xl border border-gray-100 relative">
-            <button
-              type="button"
-              onClick={() => setSelectedSubmission(null)}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-500 flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <FaXmark className="text-sm" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                selectedSubmission.type === "Student" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-orange-50 text-orange-700 border border-orange-200"
-              }`}>
-                {selectedSubmission.type} Submission
-              </span>
-              <span className="text-xs text-gray-400 font-mono">ID: {selectedSubmission.id}</span>
-            </div>
-
-            <h3 className="text-xl sm:text-2xl font-black text-gray-900 mb-6">
-              {selectedSubmission.firstName} {selectedSubmission.lastName}
-            </h3>
-
-            {/* Profile Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50 rounded-2xl p-4 sm:p-5 border border-gray-100 text-xs text-gray-700 mb-6">
-              <div>
-                <span className="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-0.5">Email Address</span>
-                <span className="font-bold text-gray-900">{selectedSubmission.email}</span>
-              </div>
-              <div>
-                <span className="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-0.5">Mobile Number</span>
-                <span className="font-mono font-bold text-gray-900">{selectedSubmission.mobile}</span>
-              </div>
-              <div>
-                <span className="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-0.5">Date of Birth</span>
-                <span className="font-bold text-gray-900">{selectedSubmission.dob}</span>
-              </div>
-              <div>
-                <span className="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-0.5">Gender</span>
-                <span className="font-bold text-gray-900">{selectedSubmission.gender}</span>
-              </div>
-              <div>
-                <span className="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-0.5">Occupation</span>
-                <span className="font-bold text-gray-900">{selectedSubmission.occupation}</span>
-              </div>
-              {selectedSubmission.type === "Student" && (
-                <div>
-                  <span className="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-0.5">Class</span>
-                  <span className="font-bold text-gray-900">{selectedSubmission.studentClass}</span>
-                </div>
-              )}
-              <div>
-                <span className="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-0.5">State & City</span>
-                <span className="font-bold text-gray-900">{selectedSubmission.state}, {selectedSubmission.city}</span>
-              </div>
-              {selectedSubmission.type === "Student" && (
-                <div>
-                  <span className="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-0.5">School</span>
-                  <span className="font-bold text-gray-900">{selectedSubmission.school}</span>
-                </div>
-              )}
-              <div className="sm:col-span-2 border-t border-gray-200/60 pt-3 mt-1">
-                <span className="block font-bold text-gray-400 uppercase text-[10px] tracking-wider mb-0.5">Submitted On</span>
-                <span className="font-bold text-gray-900">{selectedSubmission.submittedOn}</span>
-              </div>
-            </div>
-
-            {/* Questionnaire Responses Section (If answers available) */}
-            {selectedSubmission.answers && Object.keys(selectedSubmission.answers).length > 0 && (
-              <div>
-                <h4 className="text-xs font-black uppercase text-gray-400 tracking-wider mb-3">
-                  Survey Responses / सर्वे उत्तर
-                </h4>
-                <div className="space-y-2.5 max-h-52 overflow-y-auto pr-1">
-                  {Object.entries(selectedSubmission.answers).map(([qKey, ansVal], idx) => (
-                    <div key={qKey} className="p-3 bg-red-50/30 rounded-xl border border-red-100/60 text-xs">
-                      <p className="font-bold text-gray-800">Q{idx + 1}: {qKey}</p>
-                      <p className="font-extrabold text-[var(--primary)] mt-1">
-                        {Array.isArray(ansVal) ? ansVal.join(", ") : String(ansVal)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setSelectedSubmission(null)}
-                className="px-6 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white text-xs font-extrabold transition-all cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
           </div>
         </div>
       )}
